@@ -8,11 +8,27 @@
 #include <random>
 #include <ctime>
 #include <SFML/Graphics.hpp>
+#include <windows.h>
 
 #define SUCCESS 0
 #define FAILURE 1
 
-using namespace std;
+
+
+float elap_time() {
+	static __int64 start = 0;
+	static __int64 frequency = 0;
+
+	if (start == 0) {
+		QueryPerformanceCounter((LARGE_INTEGER*)&start);
+		QueryPerformanceFrequency((LARGE_INTEGER*)&frequency);
+		return 0.0f;
+	}
+
+	__int64 counter = 0;
+	QueryPerformanceCounter((LARGE_INTEGER*)&counter);
+	return (float)((counter - start) / double(frequency));
+}
 
 /* convert the kernel file into a string */
 int convertToString(const char *filename, std::string& s)
@@ -41,43 +57,30 @@ int convertToString(const char *filename, std::string& s)
 		delete[] str;
 		return 0;
 	}
-	cout<<"Error: failed to open file\n:"<<filename<<endl;
+	std::cout << "Error: failed to open file\n:" << filename << std::endl;
 	return FAILURE;
 }
 
 int main(int argc, char* argv[])
 {
+	int WINDOW_X = 1000;
+	int WINDOW_Y = 1000;
+	int GRID_WIDTH = 1000;
+	int GRID_HEIGHT = 1000;
+	int WORKER_SIZE = 1000;
 
-	
-	// 1000 x 1000 grid
-	std::mt19937 rng(time(NULL));
-	std::uniform_int_distribution<int> rgen(0, 4); // 25% chance
-
-	char* grid = new char[1000 * 1000 * 2];
-
-	for (int i = 0; i < 1000 * 1000 * 2; i += 2) {
-		if (rgen(rng) == 1) {
-			grid[i] = 1;
-			grid[i + 1] = 1;
-		}
-		else {
-			grid[i] = 0;
-			grid[i + 1] = 0;
-		}
-	}
-
+	// ============================== OpenCL Setup ==================================================================
 
 	/*Step1: Getting platforms and choose an available one.*/
 	cl_uint numPlatforms;	//the NO. of platforms
 	cl_platform_id platform = NULL;	//the chosen platform
 	cl_int	status = clGetPlatformIDs(0, NULL, &numPlatforms);
-	if (status != CL_SUCCESS)
-	{
-		cout << "Error: Getting platforms!" << endl;
+	if (status != CL_SUCCESS) {
+		std::cout << "Error: Getting platforms!" << std::endl;
 		return FAILURE;
 	}
 
-	/*For clarity, choose the first available platform. */
+	 // Choose the first available platform
 	if(numPlatforms > 0)
 	{
 		cl_platform_id* platforms = (cl_platform_id* )malloc(numPlatforms* sizeof(cl_platform_id));
@@ -90,16 +93,14 @@ int main(int argc, char* argv[])
 	cl_uint				numDevices = 0;
 	cl_device_id        *devices;
 	status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);	
-	if (numDevices == 0)	//no GPU available.
-	{
-		cout << "No GPU device available." << endl;
-		cout << "Choose CPU as default device." << endl;
+	if (numDevices == 0) { //no GPU available.
+		std::cout << "No GPU device available." << std::endl;
+		std::cout << "Choose CPU as default device." << std::endl;
 		status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 0, NULL, &numDevices);	
 		devices = (cl_device_id*)malloc(numDevices * sizeof(cl_device_id));
 		status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, numDevices, devices, NULL);
 	}
-	else
-	{
+	else {
 		devices = (cl_device_id*)malloc(numDevices * sizeof(cl_device_id));
 		status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);
 	}
@@ -111,51 +112,73 @@ int main(int argc, char* argv[])
 	/*Step 4: Creating command queue associate with the context.*/
 	cl_command_queue commandQueue = clCreateCommandQueue(context, devices[0], 0, NULL);
 
+
+	// ============================== Kernel Compilation, Setup ====================================================
+
 	/*Step 5: Create program object */
 	const char *filename = "HelloWorld_Kernel.cl";
-	string sourceStr;
+	std::string sourceStr;
 	status = convertToString(filename, sourceStr);
 	const char *source = sourceStr.c_str();
 	size_t sourceSize[] = {strlen(source)};
 	cl_program program = clCreateProgramWithSource(context, 1, &source, sourceSize, NULL);
 	
-	/*Step 6: Build program. */
+	// Build program and set kernel
 	status=clBuildProgram(program, 1,devices,NULL,NULL,NULL);
 
-	/*Step 7: Initial input,output for the host and create memory objects for the kernel*/
-	const char* input = "GdkknVnqkc";
-	size_t strlength = strlen(input);
-	cout << "input string:" << endl;
-	cout << input << endl;
-	char *output = (char*) malloc(strlength + 1);
+	if (status == CL_BUILD_PROGRAM_FAILURE) {
+		// Determine the size of the log
+		size_t log_size;
+		clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
 
-	cl_mem inputBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, (strlength + 1) * sizeof(char),(void *) input, NULL);
-	cl_mem outputBuffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY , (strlength + 1) * sizeof(char), NULL, NULL);
+		// Allocate memory for the log
+		char *log = (char *)malloc(log_size);
 
-	/*Step 8: Create kernel object */
-	cl_kernel kernel = clCreateKernel(program,"helloworld", NULL);
+		// Get the log
+		clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
 
-	/*Step 9: Sets Kernel arguments.*/
-	status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&inputBuffer);
-	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&outputBuffer);
-	
-	// ======================================= START SFML ==========================================================
+		// Print the log
+		printf("%s\n", log);
+	}
 
+	cl_kernel kernel = clCreateKernel(program, "helloworld", NULL);
+
+	// ======================================= Setup grid =========================================================
+
+	// Setup the rng
+	std::mt19937 rng(time(NULL));
+	std::uniform_int_distribution<int> rgen(0, 4); // 25% chance
+
+	// Init the grid 
+	char* grid = new char[GRID_WIDTH * GRID_HEIGHT* 2];
+
+	for (int i = 0; i < 1000 * 1000 * 2; i += 2) {
+		if (rgen(rng) == 1) {
+			grid[i] = 1;
+			grid[i + 1] = 1;
+		}
+		else {
+			grid[i] = 0;
+			grid[i + 1] = 0;
+		}
+	}
+
+	// ====================================== Setup SFML ==========================================================
 
 	// Spites for drawing, probably where the biggest slowdown is
 	sf::RectangleShape live_node;
 	live_node.setFillColor(sf::Color(145, 181, 207));
-	live_node.setSize(sf::Vector2f(WINDOW_X / Node::x_bound, WINDOW_Y / Node::y_bound));
+	live_node.setSize(sf::Vector2f(1, 1));
 
 	// Init window, and loop data
-	sf::RenderWindow window(sf::VideoMode(WINDOW_X, WINDOW_Y), "Classic Games");
+	sf::RenderWindow window(sf::VideoMode(GRID_WIDTH, GRID_HEIGHT), "Classic Games");
 
 	float step_size = 0.0005f;
 	double frame_time = 0.0, elapsed_time = 0.0, delta_time = 0.0, accumulator_time = 0.0, current_time = 0.0;
 	int frame_count = 0;
 
-	std::stack<std::thread> thread_stack;
 
+	// ===================================== Loop ==================================================================
 	while (window.isOpen()) {
 
 		sf::Event event;
@@ -165,7 +188,7 @@ int main(int argc, char* argv[])
 		}
 
 		// Time keeping
-		elapsed_time = elap_time();
+		//elapsed_time = elap_time();
 		delta_time = elapsed_time - current_time;
 		current_time = elapsed_time;
 		if (delta_time > 0.02f)
@@ -174,70 +197,67 @@ int main(int argc, char* argv[])
 
 		while ((accumulator_time - step_size) >= step_size) {
 			accumulator_time -= step_size;
-
 			// Do nothing, FPS tied update()
+		}
+
+		// ======================================= OpenCL Shtuff =============================================
+
+		int err = 0;
+		cl_mem inputBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), (void*)grid, &err);
+		cl_mem workerCountBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &WORKER_SIZE, &err);
+		cl_mem gridWidthBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_WIDTH, &err);
+		cl_mem gridHeightBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_HEIGHT, &err);
+
+		status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&inputBuffer);
+		status = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&workerCountBuffer);
+		status = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&gridWidthBuffer);
+		status = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&gridHeightBuffer);
+
+		// One work item per group, don't really know if this impacts performance
+		size_t global_work_size[1] = { 1 };
+
+		// Run the kernel
+		status = clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
+
+		// Get output, put back into grid
+		cl_mem outputBuffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), NULL, NULL);
+		status = clEnqueueReadBuffer(commandQueue, outputBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), grid, 0, NULL, NULL);
+
+		// Temporary
+		status = clReleaseMemObject(inputBuffer);
+		status = clReleaseMemObject(workerCountBuffer);
+		status = clReleaseMemObject(gridWidthBuffer);
+		status = clReleaseMemObject(gridHeightBuffer);
+
+		// Swap status's
+		for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 2; i += 2) {
+			grid[i] = grid[i + 1];
+		}
+
+		for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 2; i += 2) {
+			if (!grid[i]) {
+				live_node.setPosition(sf::Vector2f((i % GRID_WIDTH) * (i / GRID_WIDTH), i / GRID_WIDTH));
+				window.draw(live_node);
+			}
 		}
 
 		// Implicit dead node color
 		window.clear(sf::Color(49, 68, 72));
 
-		for (int i = 0; i < 12; i++) {
-			thread_stack.emplace(updateRange, &node_vec, (node_vec.size() / 12)* i, (node_vec.size() / 12)* (i + 1));
-		}
-		while (!thread_stack.empty()) {
-			thread_stack.top().join();
-			thread_stack.pop();
-		}
-
-		//for (int i = 0; i < node_vec.size(); i++) {
-		//	node_vec.at(i).Update(&node_vec);
-		//}
-
-		for (int i = 0; i < node_vec.size(); i++) {
-			node_vec[i].ShiftState();
-		}
-
-		for (int i = 0; i < node_vec.size(); i++) {
-			if (node_vec.at(i).CurrentState() == true) {
-				live_node.setPosition((i % Node::x_bound) * live_node.getGlobalBounds().width, (i / Node::x_bound) * live_node.getGlobalBounds().height);
-				window.draw(live_node);
-			}
-			else {
-				//dead_node.setPosition(i % Node::x_bound * dead_node.getGlobalBounds().width, i / Node::x_bound * dead_node.getGlobalBounds().height);
-				//window.draw(live_node);
-			}
-		}
 
 		frame_count++;
 		window.display();
 
+	}
 
-	// ======================================= END SFML ==========================================================
 
-	/*Step 10: Running the kernel.*/
-	size_t global_work_size[1] = {strlength};
-	status = clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
 
-	/*Step 11: Read the cout put back to host memory.*/
-	status = clEnqueueReadBuffer(commandQueue, outputBuffer, CL_TRUE, 0, strlength * sizeof(char), output, 0, NULL, NULL);
-	
-	output[strlength] = '\0';	//Add the terminal character to the end of output.
-	cout << "\noutput string:" << endl;
-	cout << output << endl;
 
 	/*Step 12: Clean the resources.*/
 	status = clReleaseKernel(kernel);				//Release kernel.
 	status = clReleaseProgram(program);				//Release the program object.
-	status = clReleaseMemObject(inputBuffer);		//Release mem object.
-	status = clReleaseMemObject(outputBuffer);
 	status = clReleaseCommandQueue(commandQueue);	//Release  Command queue.
 	status = clReleaseContext(context);				//Release context.
-
-	if (output != NULL)
-	{
-		free(output);
-		output = NULL;
-	}
 
 	if (devices != NULL)
 	{
@@ -245,6 +265,5 @@ int main(int argc, char* argv[])
 		devices = NULL;
 	}
 
-	std::cout<<"Passed!\n";
 	return SUCCESS;
 }
