@@ -178,6 +178,18 @@ int main(int argc, char* argv[])
 	int frame_count = 0;
 
 
+	int err = 0;
+	cl_mem workerCountBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &WORKER_SIZE, &err);
+	cl_mem gridWidthBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_WIDTH, &err);
+	cl_mem gridHeightBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_HEIGHT, &err);
+
+
+
+	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&workerCountBuffer);
+	status = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&gridWidthBuffer);
+	status = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&gridHeightBuffer);
+
+
 	// ===================================== Loop ==================================================================
 	while (window.isOpen()) {
 
@@ -202,16 +214,11 @@ int main(int argc, char* argv[])
 
 		// ======================================= OpenCL Shtuff =============================================
 
-		int err = 0;
-		cl_mem inputBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), (void*)grid, &err);
-		cl_mem workerCountBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &WORKER_SIZE, &err);
-		cl_mem gridWidthBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_WIDTH, &err);
-		cl_mem gridHeightBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_HEIGHT, &err);
+		// Implicit dead node color
+		window.clear(sf::Color(49, 68, 72));
 
+		cl_mem inputBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), (void*)grid, &err);
 		status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&inputBuffer);
-		status = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&workerCountBuffer);
-		status = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&gridWidthBuffer);
-		status = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&gridHeightBuffer);
 
 		// One work item per group, don't really know if this impacts performance
 		size_t global_work_size[1] = { 1 };
@@ -220,14 +227,11 @@ int main(int argc, char* argv[])
 		status = clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
 
 		// Get output, put back into grid
-		cl_mem outputBuffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), NULL, NULL);
-		status = clEnqueueReadBuffer(commandQueue, outputBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), grid, 0, NULL, NULL);
+		//cl_mem outputBuffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), grid, NULL);
+		status = clEnqueueReadBuffer(commandQueue, inputBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), grid, 0, NULL, NULL);
 
 		// Temporary
 		status = clReleaseMemObject(inputBuffer);
-		status = clReleaseMemObject(workerCountBuffer);
-		status = clReleaseMemObject(gridWidthBuffer);
-		status = clReleaseMemObject(gridHeightBuffer);
 
 		// Swap status's
 		for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 2; i += 2) {
@@ -235,15 +239,11 @@ int main(int argc, char* argv[])
 		}
 
 		for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 2; i += 2) {
-			if (!grid[i]) {
-				live_node.setPosition(sf::Vector2f((i % GRID_WIDTH) * (i / GRID_WIDTH), i / GRID_WIDTH));
+			if (grid[i] == 1) {
+				live_node.setPosition(sf::Vector2f(((i / 2) % GRID_WIDTH), (i / 2) / GRID_WIDTH));
 				window.draw(live_node);
 			}
 		}
-
-		// Implicit dead node color
-		window.clear(sf::Color(49, 68, 72));
-
 
 		frame_count++;
 		window.display();
@@ -251,7 +251,9 @@ int main(int argc, char* argv[])
 	}
 
 
-
+	status = clReleaseMemObject(workerCountBuffer);
+	status = clReleaseMemObject(gridWidthBuffer);
+	status = clReleaseMemObject(gridHeightBuffer);
 
 	/*Step 12: Clean the resources.*/
 	status = clReleaseKernel(kernel);				//Release kernel.
