@@ -181,6 +181,9 @@ int main(int argc, char* argv[])
 	int err = 0;
 
 
+	sf::Uint8* pixel_array = new sf::Uint8[WINDOW_X * WINDOW_Y * 4];
+	sf::Texture texture;
+	texture.create(WINDOW_X, WINDOW_Y);
 
 	// ===================================== Loop ==================================================================
 	while (window.isOpen()) {
@@ -220,9 +223,9 @@ int main(int argc, char* argv[])
 		status = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&gridWidthBuffer);
 		status = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&gridHeightBuffer);
 		
-		//status = clEnqueueWriteBuffer(commandQueue, inputBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), (void*)grid, NULL, 0, NULL);
+		status = clEnqueueWriteBuffer(commandQueue, inputBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), (void*)grid, NULL, 0, NULL);
 
-		// One work item per group, don't really know if this impacts performance
+		// Work size, for each y line
 		size_t global_work_size[1] = { GRID_HEIGHT };
 
 		// Run the kernel
@@ -243,12 +246,35 @@ int main(int argc, char* argv[])
 			grid[i] = grid[i + 1];
 		}
 
+		sf::Sprite sprite(texture);
+
 		for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 2; i += 2) {
+
 			if (grid[i] == 1) {
-				live_node.setPosition(sf::Vector2f(((i / 2) % GRID_WIDTH), (i / 2) / GRID_WIDTH));
-				window.draw(live_node);
+
+				pixel_array[(i/ 2) * 4] = 255; // R?
+				pixel_array[(i / 2) * 4 + 1] = 255; // G?
+				pixel_array[(i / 2) * 4 + 2] = 255; // B?
+				pixel_array[(i / 2) * 4 + 3] = 255; // A?
+
+			}
+			else {
+				pixel_array[(i / 2) * 4] = 49; // R?
+				pixel_array[(i / 2) * 4 + 1] = 68; // G?
+				pixel_array[(i / 2) * 4 + 2] = 72; // B?
+				pixel_array[(i / 2) * 4 + 3] = 255; // A?
 			}
 		}
+
+		texture.update(pixel_array);
+		window.draw(sprite);
+		
+		//for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 2; i += 2) {
+		//	if (grid[i] == 1) {
+		//		live_node.setPosition(sf::Vector2f(((i / 2) % GRID_WIDTH), (i / 2) / GRID_WIDTH));
+		//		window.draw(live_node);
+		//	}
+		//}
 
 		frame_count++;
 		window.display();
