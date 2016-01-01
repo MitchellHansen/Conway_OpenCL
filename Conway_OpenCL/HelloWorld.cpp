@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
 	int WINDOW_Y = 1000;
 	int GRID_WIDTH = 1000;
 	int GRID_HEIGHT = 1000;
-	int WORKER_SIZE = 1000;
+	int WORKER_SIZE = 2000;
 
 	// ============================== OpenCL Setup ==================================================================
 
@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
 
 	// Setup the rng
 	std::mt19937 rng(time(NULL));
-	std::uniform_int_distribution<int> rgen(0, 4); // 25% chance
+	std::uniform_int_distribution<int> rgen(0, 20); // 25% chance
 
 	// Init the grid 
 	char* grid = new char[GRID_WIDTH * GRID_HEIGHT* 2];
@@ -179,11 +179,21 @@ int main(int argc, char* argv[])
 
 
 	int err = 0;
+	cl_mem inputBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), (void*)grid, &err);
+	cl_mem workerCountBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &WORKER_SIZE, &err);
+	cl_mem gridWidthBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_WIDTH, &err);
+	cl_mem gridHeightBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_HEIGHT, &err);
 
+	status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&inputBuffer);
+	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&workerCountBuffer);
+	status = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&gridWidthBuffer);
+	status = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&gridHeightBuffer);
 
 	sf::Uint8* pixel_array = new sf::Uint8[WINDOW_X * WINDOW_Y * 4];
 	sf::Texture texture;
 	texture.create(WINDOW_X, WINDOW_Y);
+	sf::Sprite sprite(texture);
+
 
 	// ===================================== Loop ==================================================================
 	while (window.isOpen()) {
@@ -209,47 +219,21 @@ int main(int argc, char* argv[])
 
 		// ======================================= OpenCL Shtuff =============================================
 
-		// Implicit dead node color
-		window.clear(sf::Color(49, 68, 72));
-
-		cl_mem inputBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), (void*)grid, &err);
-		cl_mem workerCountBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &WORKER_SIZE, &err);
-		cl_mem gridWidthBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_WIDTH, &err);
-		cl_mem gridHeightBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_HEIGHT, &err);
-
-
-		status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&inputBuffer);
-		status = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&workerCountBuffer);
-		status = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&gridWidthBuffer);
-		status = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&gridHeightBuffer);
-		
+		// Update the data in GPU memory
 		status = clEnqueueWriteBuffer(commandQueue, inputBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), (void*)grid, NULL, 0, NULL);
-
+		
 		// Work size, for each y line
-		size_t global_work_size[1] = { GRID_HEIGHT };
+		size_t global_work_size[1] = { WORKER_SIZE };
 
 		// Run the kernel
 		status = clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
 
 		// Get output, put back into grid
-		//cl_mem outputBuffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), grid, NULL);
 		status = clEnqueueReadBuffer(commandQueue, inputBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), (void*)grid, 0, NULL, NULL);
 
-		// Temporary
-		status = clReleaseMemObject(inputBuffer);
-		status = clReleaseMemObject(workerCountBuffer);
-		status = clReleaseMemObject(gridWidthBuffer);
-		status = clReleaseMemObject(gridHeightBuffer);
 
-		// Swap status's
 		for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 2; i += 2) {
 			grid[i] = grid[i + 1];
-		}
-
-		sf::Sprite sprite(texture);
-
-		for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 2; i += 2) {
-
 			if (grid[i] == 1) {
 
 				pixel_array[(i/ 2) * 4] = 255; // R?
@@ -268,13 +252,6 @@ int main(int argc, char* argv[])
 
 		texture.update(pixel_array);
 		window.draw(sprite);
-		
-		//for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 2; i += 2) {
-		//	if (grid[i] == 1) {
-		//		live_node.setPosition(sf::Vector2f(((i / 2) % GRID_WIDTH), (i / 2) / GRID_WIDTH));
-		//		window.draw(live_node);
-		//	}
-		//}
 
 		frame_count++;
 		window.display();
@@ -282,7 +259,11 @@ int main(int argc, char* argv[])
 	}
 
 
-
+	// Temporary
+	status = clReleaseMemObject(inputBuffer);
+	status = clReleaseMemObject(workerCountBuffer);
+	status = clReleaseMemObject(gridWidthBuffer);
+	status = clReleaseMemObject(gridHeightBuffer);
 
 	/*Step 12: Clean the resources.*/
 	status = clReleaseKernel(kernel);				//Release kernel.
