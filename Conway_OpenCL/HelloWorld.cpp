@@ -223,7 +223,7 @@ int main(int argc, char* argv[])
 		//status = clEnqueueWriteBuffer(commandQueue, inputBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), (void*)grid, NULL, 0, NULL);
 
 		// One work item per group, don't really know if this impacts performance
-		size_t global_work_size[1] = { 100 };
+		size_t global_work_size[1] = { GRID_HEIGHT };
 
 		// Run the kernel
 		status = clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
