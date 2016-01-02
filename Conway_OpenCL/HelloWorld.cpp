@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
 
 	// Setup the rng
 	std::mt19937 rng(time(NULL));
-	std::uniform_int_distribution<int> rgen(0, 20); // 25% chance
+	std::uniform_int_distribution<int> rgen(0, 12); // 25% chance
 
 	// Init the grid 
 	char* grid = new char[GRID_WIDTH * GRID_HEIGHT* 2];
@@ -190,6 +190,17 @@ int main(int argc, char* argv[])
 	status = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&gridHeightBuffer);
 
 	sf::Uint8* pixel_array = new sf::Uint8[WINDOW_X * WINDOW_Y * 4];
+
+	for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 2; i += 2) {
+
+		int p = i / 2;
+
+		pixel_array[p * 4] = 49; // R?
+		pixel_array[p * 4 + 1] = 68; // G?
+		pixel_array[p * 4 + 2] = 72; // B?
+		pixel_array[p * 4 + 3] = 255; // A?
+	}
+
 	sf::Texture texture;
 	texture.create(WINDOW_X, WINDOW_Y);
 	sf::Sprite sprite(texture);
@@ -233,21 +244,25 @@ int main(int argc, char* argv[])
 
 
 		for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 2; i += 2) {
+			
+			int p = i / 2;
+
+			if (grid[i + 1] == 1) {
+
+				pixel_array[p * 4] = 255; // R?
+				pixel_array[p * 4 + 1] = 255; // G?
+				pixel_array[p * 4 + 2] = 255; // B?
+				pixel_array[p * 4 + 3] = 255; // A?
+
+			}
+			else if (grid[i] == 1){
+				pixel_array[p * 4] = 49; // R?
+				pixel_array[p * 4 + 1] = 68; // G?
+				pixel_array[p * 4 + 2] = 72; // B?
+				pixel_array[p * 4 + 3] = 255; // A?
+			}
+
 			grid[i] = grid[i + 1];
-			if (grid[i] == 1) {
-
-				pixel_array[(i/ 2) * 4] = 255; // R?
-				pixel_array[(i / 2) * 4 + 1] = 255; // G?
-				pixel_array[(i / 2) * 4 + 2] = 255; // B?
-				pixel_array[(i / 2) * 4 + 3] = 255; // A?
-
-			}
-			else {
-				pixel_array[(i / 2) * 4] = 49; // R?
-				pixel_array[(i / 2) * 4 + 1] = 68; // G?
-				pixel_array[(i / 2) * 4 + 2] = 72; // B?
-				pixel_array[(i / 2) * 4 + 3] = 255; // A?
-			}
 		}
 
 		texture.update(pixel_array);
