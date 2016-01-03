@@ -227,7 +227,8 @@
     <ClCompile Include="Conway.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="conway_kernel.cl" />
+    <None Include="conway_compute.cl" />
+    <None Include="conway_align.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

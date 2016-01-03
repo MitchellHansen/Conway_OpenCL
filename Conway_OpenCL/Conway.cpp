@@ -28,7 +28,7 @@ float elap_time() {
 	return (float)((counter - start) / double(frequency));
 }
 
-/* convert the kernel file into a string */
+// convert the kernel file into a string
 int convertToString(const char *filename, std::string& s)
 {
 	size_t size;
@@ -63,8 +63,8 @@ int main(int argc, char* argv[])
 {
 	int WINDOW_X = 1000;
 	int WINDOW_Y = 1000;
-	int GRID_WIDTH = 1000;
-	int GRID_HEIGHT = 1000;
+	int GRID_WIDTH = WINDOW_X;
+	int GRID_HEIGHT = WINDOW_Y;
 	int WORKER_SIZE = 2000;
 
 	// ============================== OpenCL Setup ==================================================================
@@ -139,18 +139,19 @@ int main(int argc, char* argv[])
 	}
 
 	// Now create the kernel
-	cl_kernel kernel = clCreateKernel(program, "conway", NULL);
+	cl_kernel front_kernel = clCreateKernel(program, "conway", NULL);
+	cl_kernel back_kernel = clCreateKernel(program, "conway", NULL);
 
 	// ======================================= Setup grid =========================================================
 
 	// Setup the rng
 	std::mt19937 rng(time(NULL));
-	std::uniform_int_distribution<int> rgen(0, 12); // 25% chance
+	std::uniform_int_distribution<int> rgen(0, 4); // 25% chance
 
 	// Init the grids
-	unsigned char* front_grid = new unsigned char[GRID_WIDTH * GRID_HEIGHT* 2];
+	unsigned char* front_grid = new unsigned char[GRID_WIDTH * GRID_HEIGHT];
 
-	for (int i = 0; i < 1000 * 1000; i += 2) {
+	for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT; i++) {
 		if (rgen(rng) == 1) {
 			front_grid[i] = 1;
 		}
@@ -159,30 +160,13 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	unsigned char* rear_grid = new unsigned char[GRID_WIDTH * GRID_HEIGHT * 2];
+	unsigned char* back_grid = new unsigned char[GRID_WIDTH * GRID_HEIGHT];
 
 	for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT; i++) {
-		rear_grid[i] = front_grid[i];
+		back_grid[i] = front_grid[i];
 	}
 
 	// ====================================== Setup SFML ==========================================================
-
-	sf::Uint8* asdf = rear_grid;
-
-	sf::Uint8* pixel_array = new sf::Uint8[WINDOW_X * WINDOW_Y * 4];
-
-	for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 2; i += 2) {
-
-		int p = i / 2;
-
-		pixel_array[p * 4] = 49; // R?
-		pixel_array[p * 4 + 1] = 68; // G?
-		pixel_array[p * 4 + 2] = 72; // B?
-		pixel_array[p * 4 + 3] = 255; // A?
-	}
-
-	char* arr = new char[1000 * 1000];
-
 
 	// Init window, and loop data
 	sf::RenderWindow window(sf::VideoMode(GRID_WIDTH, GRID_HEIGHT), "Classic Games");
@@ -191,26 +175,51 @@ int main(int argc, char* argv[])
 	double frame_time = 0.0, elapsed_time = 0.0, delta_time = 0.0, accumulator_time = 0.0, current_time = 0.0;
 	int frame_count = 0;
 
+	sf::Uint8* pixel_array = new sf::Uint8[WINDOW_X * WINDOW_Y * 4];
 
-	int err = 0;
-	cl_mem frontBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * sizeof(char), (void*)front_grid, &err);
-	cl_mem rearBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * sizeof(char), (void*)rear_grid, &err);
+	for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT; i++) {
 
-	cl_mem workerCountBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &WORKER_SIZE, &err);
-	cl_mem gridWidthBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_WIDTH, &err);
-	cl_mem gridHeightBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_HEIGHT, &err);
-
-	status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&frontBuffer);
-	status = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&workerCountBuffer);
-	status = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&gridWidthBuffer);
-	status = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&gridHeightBuffer);
-
+		pixel_array[i * 4] = 49; // R?
+		pixel_array[i * 4 + 1] = 68; // G?
+		pixel_array[i * 4 + 2] = 72; // B?
+		pixel_array[i * 4 + 3] = 255; // A?
+	}
 
 	sf::Texture texture;
 	texture.create(WINDOW_X, WINDOW_Y);
 	sf::Sprite sprite(texture);
 
+	// ========================================= Setup the buffers ==================================================
 
+	int err = 0;
+
+	cl_mem frontBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * sizeof(char), (void*)front_grid, &err);
+	cl_mem backBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * sizeof(char), (void*)back_grid, &err);
+	cl_mem pixelBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * sizeof(char), (void*)pixel_array, &err);
+
+	cl_mem workerCountBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &WORKER_SIZE, &err);
+	cl_mem gridWidthBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_WIDTH, &err);
+	cl_mem gridHeightBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_HEIGHT, &err);
+
+	// Kernel args for front kernel
+	status = clSetKernelArg(front_kernel, 0, sizeof(cl_mem), (void *)&frontBuffer);
+	status = clSetKernelArg(front_kernel, 1, sizeof(cl_mem), (void *)&backBuffer);
+	status = clSetKernelArg(front_kernel, 2, sizeof(cl_mem), (void *)&pixelBuffer);
+
+	status = clSetKernelArg(front_kernel, 3, sizeof(cl_mem), (void *)&workerCountBuffer);
+	status = clSetKernelArg(front_kernel, 4, sizeof(cl_mem), (void *)&gridWidthBuffer);
+	status = clSetKernelArg(front_kernel, 5, sizeof(cl_mem), (void *)&gridHeightBuffer);
+
+	// Flipped kernel args for the back kernel
+	status = clSetKernelArg(back_kernel, 0, sizeof(cl_mem), (void *)&backBuffer); // Flipped
+	status = clSetKernelArg(back_kernel, 1, sizeof(cl_mem), (void *)&frontBuffer); // Flipped
+	status = clSetKernelArg(back_kernel, 2, sizeof(cl_mem), (void *)&pixelBuffer);
+
+	status = clSetKernelArg(back_kernel, 3, sizeof(cl_mem), (void *)&workerCountBuffer);
+	status = clSetKernelArg(back_kernel, 4, sizeof(cl_mem), (void *)&gridWidthBuffer);
+	status = clSetKernelArg(back_kernel, 5, sizeof(cl_mem), (void *)&gridHeightBuffer);
+
+	bool flipped = false;
 	// ===================================== Loop ==================================================================
 	while (window.isOpen()) {
 
@@ -241,12 +250,16 @@ int main(int argc, char* argv[])
 		// Work size, for each y line
 		size_t global_work_size[1] = { WORKER_SIZE };
 
-		// Run the kernel
-		status = clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
+		if (flipped) {
+			status = clEnqueueNDRangeKernel(commandQueue, back_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
+			status = clEnqueueReadBuffer(commandQueue, pixelBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 4 * sizeof(unsigned char), (void*)pixel_array, 0, NULL, NULL);
+		}
+		else {
+			status = clEnqueueNDRangeKernel(commandQueue, front_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
+			status = clEnqueueReadBuffer(commandQueue, pixelBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 4 * sizeof(unsigned char), (void*)pixel_array, 0, NULL, NULL);
+		}
 
-		// Get output, put back into grid
-		status = clEnqueueReadBuffer(commandQueue, frontBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * sizeof(char), (void*)rear_grid, 0, NULL, NULL);
-
+		flipped = !flipped;
 
 		texture.update(pixel_array);
 		window.draw(sprite);
@@ -257,21 +270,24 @@ int main(int argc, char* argv[])
 	}
 
 
-	// Temporary
+	
+	// Release the buffers
 	status = clReleaseMemObject(frontBuffer);
+	status = clReleaseMemObject(backBuffer);
+	status = clReleaseMemObject(pixelBuffer);
 	status = clReleaseMemObject(workerCountBuffer);
 	status = clReleaseMemObject(gridWidthBuffer);
 	status = clReleaseMemObject(gridHeightBuffer);
 
-	/*Step 12: Clean the resources.*/
-	status = clReleaseKernel(kernel);				//Release kernel.
+	// And the program stuff
+	status = clReleaseKernel(front_kernel);				//Release kernel.
 	status = clReleaseProgram(program);				//Release the program object.
 	status = clReleaseCommandQueue(commandQueue);	//Release  Command queue.
 	status = clReleaseContext(context);				//Release context.
 
 	if (devices != NULL)
 	{
-		free(devices);
+		delete devices;
 		devices = NULL;
 	}
 
