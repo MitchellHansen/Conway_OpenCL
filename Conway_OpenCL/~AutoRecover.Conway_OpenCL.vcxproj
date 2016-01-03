@@ -117,7 +117,7 @@
       <ImportLibrary>$(SolutionDir)bin/x86/Debug/HelloWorld.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>copy HelloWorld_Kernel.cl "$(OutDir)HelloWorld_Kernel.cl" /Y
+      <Command>copy conway_kernel.cl "$(OutDir)conway_kernel.cl" /Y
 	  </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -144,7 +144,7 @@
       <AdditionalOptions> /machine:x64 /debug %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>copy HelloWorld_Kernel.cl "$(OutDir)HelloWorld_Kernel.cl" /Y
+      <Command>copy conway_kernel.cl "$(OutDir)conway_kernel.cl" /Y
 	  </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -182,7 +182,7 @@
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
     <PostBuildEvent>
-      <Command>copy HelloWorld_Kernel.cl "$(OutDir)HelloWorld_Kernel.cl" /Y
+      <Command>copy conway_kernel.cl "$(OutDir)conway_kernel.cl" /Y
 	  </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -219,15 +219,15 @@
       <AdditionalOptions> /machine:x64 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>copy HelloWorld_Kernel.cl "$(OutDir)HelloWorld_Kernel.cl" /Y
+      <Command>copy conway_kernel.cl "$(OutDir)conway_kernel.cl" /Y
 	  </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="HelloWorld.cpp" />
+    <ClCompile Include="Conway.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="HelloWorld_Kernel.cl" />
+    <None Include="conway_kernel.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

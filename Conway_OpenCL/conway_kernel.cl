@@ -1,4 +1,4 @@
-__kernel void helloworld(__global char* in, __global int* num_workers, __global int* grid_width, __global int* grid_height)
+__kernel void conway(__global unsigned char* front_grid, __global unsigned char* rear_grid, __global int* num_workers, __global int* grid_width, __global int* grid_height)
 {
 	// Caclulate the start and end range that this worker will be calculating
 
