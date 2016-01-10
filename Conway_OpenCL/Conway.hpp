@@ -1,4 +1,5 @@
 #include <CL/cl.h>
+#include <CL/opencl.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -75,102 +76,10 @@ int main(int argc, char* argv[])
 	int GRID_HEIGHT = WINDOW_Y;
 	int WORKER_SIZE = 2000;
 
-	// ============================== OpenCL Setup ==================================================================
-
-	// Get the platforms
-	cl_uint numPlatforms;
-	cl_platform_id platform = NULL;
-	cl_int	status = clGetPlatformIDs(0, NULL, &numPlatforms); // Retrieve the number of platforms
-	if (status != CL_SUCCESS) {
-		std::cout << "Error: Getting platforms!" << std::endl;
-		return FAILURE;
-	}
-
-	 // Choose the first available platform
-	if(numPlatforms > 0) {
-		cl_platform_id* platforms = new cl_platform_id[numPlatforms]; 
-		status = clGetPlatformIDs(numPlatforms, platforms, NULL);	// Now populate the array with the platforms
-		platform = platforms[0];
-		delete platforms;
-	}
-
-	cl_uint	numDevices = 0;
-	cl_device_id *devices;
-	status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);	
-	if (numDevices == 0) { //no GPU available.
-		std::cout << "No GPU device available." << std::endl;
-		std::cout << "Choose CPU as default device." << std::endl;
-		status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 0, NULL, &numDevices);	
-		devices = new cl_device_id[numDevices];
-		status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, numDevices, devices, NULL);
-	}
-	else {
-		devices = new cl_device_id[numDevices];
-		status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);
-	}
-	
-	cl_context context = clCreateContext(NULL,1, devices,NULL,NULL,NULL);
-	cl_command_queue commandQueue = clCreateCommandQueue(context, devices[0], 0, NULL);
-
-
-	// ============================== Kernel Compilation, Setup ====================================================
-	
-	// Read the kernel from the file to a string
-	const char *compute_kernel_filename = "conway_compute.cl";
-	const char *align_kernel_filename = "conway_align.cl";
-
-	std::string compute_kernel_string;
-	std::string align_kernel_string;
-
-	convertToString(compute_kernel_filename, compute_kernel_string);
-	convertToString(compute_kernel_filename, align_kernel_string);
-
-	// Create a program with the source
-	const char *compute_source = compute_kernel_string.c_str();
-	const char *align_source = align_kernel_string.c_str();
-
-	size_t compute_source_size[] = {strlen(compute_source)};
-	size_t align_source_size[] = { strlen(align_source) };
-
-	cl_program compute_program = clCreateProgramWithSource(context, 1, &compute_source, compute_source_size, NULL);
-	cl_program align_program = clCreateProgramWithSource(context, 1, &align_source, align_source_size, NULL);
-
-	// Build the compute program
-	status = clBuildProgram(compute_program, 1, devices, NULL, NULL, NULL);
-
-	if (status == CL_BUILD_PROGRAM_FAILURE) {
-
-		size_t log_size;
-		clGetProgramBuildInfo(compute_program, devices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
-		char *log = new char[log_size];
-
-		clGetProgramBuildInfo(compute_program, devices[0], CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
-
-		std::cout << log << std::endl;
-	}
-
-	// Build the align program
-	status = clBuildProgram(align_program, 1, devices, NULL, NULL, NULL);
-	
-	if (status == CL_BUILD_PROGRAM_FAILURE) {
-
-		size_t log_size;
-		clGetProgramBuildInfo(align_program, devices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
-		char *log = new char[log_size];
-
-		clGetProgramBuildInfo(align_program, devices[0], CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
-
-		std::cout << log << std::endl;
-	}
-
-	// Now create the kernels
-	cl_kernel front_kernel = clCreateKernel(compute_program, "conway_compute", NULL);
-	cl_kernel back_kernel = clCreateKernel(align_program, "conway_align", NULL);
-
 	// ======================================= Setup OpenGL =======================================================
-	
+
 	glfwInit();
-	
+
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -180,7 +89,7 @@ int main(int argc, char* argv[])
 	glfwMakeContextCurrent(gl_window);
 
 	glfwSetKeyCallback(gl_window, key_callback);
-	
+
 	glewExperimental = GL_TRUE;
 	glewInit();
 
@@ -229,6 +138,104 @@ int main(int argc, char* argv[])
 
 	glBindVertexArray(0); // Unbind VAO
 
+	// ============================== OpenCL Setup ==================================================================
+
+	// Get the platforms
+	cl_uint numPlatforms;
+	cl_platform_id platform = NULL;
+	cl_int	status = clGetPlatformIDs(0, NULL, &numPlatforms); // Retrieve the number of platforms
+	if (status != CL_SUCCESS) {
+		std::cout << "Error: Getting platforms!" << std::endl;
+		return FAILURE;
+	}
+
+	 // Choose the first available platform
+	if(numPlatforms > 0) {
+		cl_platform_id* platforms = new cl_platform_id[numPlatforms]; 
+		status = clGetPlatformIDs(numPlatforms, platforms, NULL);	// Now populate the array with the platforms
+		platform = platforms[0];
+		delete platforms;
+	}
+
+	cl_uint	numDevices = 0;
+	cl_device_id *devices;
+	status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);	
+	if (numDevices == 0) { //no GPU available.
+		std::cout << "No GPU device available." << std::endl;
+		std::cout << "Choose CPU as default device." << std::endl;
+		status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 0, NULL, &numDevices);	
+		devices = new cl_device_id[numDevices];
+		status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, numDevices, devices, NULL);
+	}
+	else {
+		devices = new cl_device_id[numDevices];
+		status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);
+	}
+
+	HGLRC hGLRC = wglGetCurrentContext();
+	HDC hDC = wglGetCurrentDC();
+	cl_context_properties cps[] ={CL_CONTEXT_PLATFORM, (cl_context_properties)platform, CL_GL_CONTEXT_KHR, (cl_context_properties)hGLRC, CL_WGL_HDC_KHR, (cl_context_properties)hDC, 0 };
+
+	
+	cl_context context = clCreateContext(cps, 1, devices,NULL,NULL,NULL);
+	cl_command_queue commandQueue = clCreateCommandQueue(context, devices[0], 0, NULL);
+
+	
+	// ============================== Kernel Compilation, Setup ====================================================
+	
+	// Read the kernel from the file to a string
+	const char *compute_kernel_filename = "Z:\\VS_Projects\\Conway_OpenCL\\Conway_OpenCL\\conway_compute.cl";
+	const char *align_kernel_filename = "Z:\\VS_Projects\\Conway_OpenCL\\Conway_OpenCL\\conway_align.cl";
+
+	std::string compute_kernel_string;
+	std::string align_kernel_string;
+
+	convertToString(compute_kernel_filename, compute_kernel_string);
+	convertToString(align_kernel_filename, align_kernel_string);
+
+	// Create a program with the source
+	const char *compute_source = compute_kernel_string.c_str();
+	const char *align_source = align_kernel_string.c_str();
+
+	size_t compute_source_size[] = {strlen(compute_source)};
+	size_t align_source_size[] = { strlen(align_source) };
+
+	cl_program compute_program = clCreateProgramWithSource(context, 1, &compute_source, compute_source_size, NULL);
+	cl_program align_program = clCreateProgramWithSource(context, 1, &align_source, align_source_size, NULL);
+
+	// Build the compute program
+	status = clBuildProgram(compute_program, 1, devices, NULL, NULL, NULL);
+
+	if (status == CL_BUILD_PROGRAM_FAILURE) {
+
+		size_t log_size;
+		clGetProgramBuildInfo(compute_program, devices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+		char *log = new char[log_size];
+
+		clGetProgramBuildInfo(compute_program, devices[0], CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+
+		std::cout << log << std::endl;
+	}
+
+	// Build the align program
+	status = clBuildProgram(align_program, 1, devices, NULL, NULL, NULL);
+	
+	if (status == CL_BUILD_PROGRAM_FAILURE) {
+
+		size_t log_size;
+		clGetProgramBuildInfo(align_program, devices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+		char *log = new char[log_size];
+
+		clGetProgramBuildInfo(align_program, devices[0], CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+
+		std::cout << log << std::endl;
+	}
+
+	// Now create the kernels
+	cl_kernel compute_kernel = clCreateKernel(compute_program, "conway_compute", NULL);
+	cl_kernel back_kernel = clCreateKernel(align_program, "conway_align", NULL);
+
+
 
 	// ======================================= Setup grid =========================================================
 
@@ -248,22 +255,16 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	unsigned char* back_grid = new unsigned char[GRID_WIDTH * GRID_HEIGHT];
-
-	for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT; i++) {
-		back_grid[i] = front_grid[i];
-	}
-
 	// ====================================== Setup Rendering ==========================================================
 
 	unsigned char* pixel_array = new sf::Uint8[WINDOW_X * WINDOW_Y * 4];
 
 	for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 4; i += 4) {
 
-		pixel_array[i] = 29; // R?
+		pixel_array[i] = i % 255; // R?
 		pixel_array[i + 1] = 70; // G?
 		pixel_array[i + 2] = 100; // B?
-		pixel_array[i + 3] = 200; // A?
+		pixel_array[i + 3] = 100; // A?
 	}
 
 	GLuint texture;
@@ -292,44 +293,35 @@ int main(int argc, char* argv[])
 	glGenerateMipmap(GL_TEXTURE_2D);
 
 
-	delete pixel_array;
+	//delete pixel_array;
 
 
 
 	// ========================================= Setup the buffers ==================================================
 
 	int err = 0;
-
-	cl_mem frontBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * sizeof(char), (void*)front_grid, &err);
-	cl_mem backBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * sizeof(char), (void*)back_grid, &err);
-	//cl_mem pixelBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * sizeof(char), (void*)pixel_array, &err);
+	
+	cl_mem frontBuffer = clCreateFromGLTexture(context , CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, texture, &err);
 
 	cl_mem workerCountBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &WORKER_SIZE, &err);
 	cl_mem gridWidthBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_WIDTH, &err);
 	cl_mem gridHeightBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_HEIGHT, &err);
 
-	// Kernel args for front kernel
-	status = clSetKernelArg(front_kernel, 0, sizeof(cl_mem), (void *)&frontBuffer);
-	status = clSetKernelArg(front_kernel, 1, sizeof(cl_mem), (void *)&backBuffer);
-	//status = clSetKernelArg(front_kernel, 2, sizeof(cl_mem), (void *)&pixelBuffer);
+	// Kernel args
+	status = clSetKernelArg(compute_kernel, 0, sizeof(cl_mem), (void *)&frontBuffer);
+	status = clSetKernelArg(compute_kernel, 1, sizeof(cl_mem), (void *)&workerCountBuffer);
+	status = clSetKernelArg(compute_kernel, 2, sizeof(cl_mem), (void *)&gridWidthBuffer);
+	status = clSetKernelArg(compute_kernel, 3, sizeof(cl_mem), (void *)&gridHeightBuffer);
 
-	status = clSetKernelArg(front_kernel, 3, sizeof(cl_mem), (void *)&workerCountBuffer);
-	status = clSetKernelArg(front_kernel, 4, sizeof(cl_mem), (void *)&gridWidthBuffer);
-	status = clSetKernelArg(front_kernel, 5, sizeof(cl_mem), (void *)&gridHeightBuffer);
-
-	// Flipped kernel args for the back kernel
-	status = clSetKernelArg(back_kernel, 0, sizeof(cl_mem), (void *)&backBuffer); // Flipped
-	status = clSetKernelArg(back_kernel, 1, sizeof(cl_mem), (void *)&frontBuffer); // Flipped
-	//status = clSetKernelArg(back_kernel, 2, sizeof(cl_mem), (void *)&pixelBuffer);
-
-	status = clSetKernelArg(back_kernel, 3, sizeof(cl_mem), (void *)&workerCountBuffer);
-	status = clSetKernelArg(back_kernel, 4, sizeof(cl_mem), (void *)&gridWidthBuffer);
-	status = clSetKernelArg(back_kernel, 5, sizeof(cl_mem), (void *)&gridHeightBuffer);
 
 
 	// ===================================== Loop ==================================================================
 
 	while (!glfwWindowShouldClose(gl_window)) {
+
+		// Clear the colorbuffer
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
 
 		//glfwPollEvents();
 		//glClear(GL_COLOR_BUFFER_BIT);
@@ -340,11 +332,15 @@ int main(int argc, char* argv[])
 		//status = clEnqueueWriteBuffer(commandQueue, frontBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), (void*)grid, NULL, 0, NULL);
 
 		// Work size, for each y line
-		size_t global_work_size[1] = { WORKER_SIZE };
+		size_t global_work_size[1] = { 10 };
 
+		status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontBuffer, 0, 0, 0);
 
-		status = clEnqueueNDRangeKernel(commandQueue, back_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
-		//status = clEnqueueReadBuffer(commandQueue, pixelBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 4 * sizeof(unsigned char), (void*)pixel_array, 0, NULL, NULL);
+		status = clEnqueueNDRangeKernel(commandQueue, compute_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
+
+		//status = clEnqueueReadBuffer(commandQueue, frontBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 4 * sizeof(unsigned char), (void*)pixel_array, 0, NULL, NULL);
+
+		status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontBuffer, 0, NULL, NULL);
 		
 
 		// ======================================= Rendering Shtuff =================================================
@@ -352,9 +348,6 @@ int main(int argc, char* argv[])
 		glfwPollEvents();
 
 		// Render
-		// Clear the colorbuffer
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture);
@@ -377,14 +370,12 @@ int main(int argc, char* argv[])
 	
 	// Release the buffers
 	status = clReleaseMemObject(frontBuffer);
-	status = clReleaseMemObject(backBuffer);
-	//status = clReleaseMemObject(pixelBuffer);
 	status = clReleaseMemObject(workerCountBuffer);
 	status = clReleaseMemObject(gridWidthBuffer);
 	status = clReleaseMemObject(gridHeightBuffer);
 
 	// And the program stuff
-	status = clReleaseKernel(front_kernel);
+	status = clReleaseKernel(compute_kernel);
 	status = clReleaseProgram(compute_program);
 	status = clReleaseProgram(align_program);
 	status = clReleaseCommandQueue(commandQueue);
