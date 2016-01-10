@@ -301,7 +301,7 @@ int main(int argc, char* argv[])
 
 	int err = 0;
 	
-	cl_mem frontBuffer = clCreateFromGLTexture(context , CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, texture, &err);
+	cl_mem frontBuffer = clCreateFromGLTexture(context , CL_MEM_WRITE_ONLY, GL_TEXTURE_2D, 0, texture, &err);
 
 	cl_mem workerCountBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &WORKER_SIZE, &err);
 	cl_mem gridWidthBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_WIDTH, &err);
@@ -335,13 +335,13 @@ int main(int argc, char* argv[])
 		size_t global_work_size[1] = { 10 };
 
 		status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontBuffer, 0, 0, 0);
-
+		glFinish();
 		status = clEnqueueNDRangeKernel(commandQueue, compute_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
-
+		glFinish();
 		//status = clEnqueueReadBuffer(commandQueue, frontBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 4 * sizeof(unsigned char), (void*)pixel_array, 0, NULL, NULL);
 
 		status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontBuffer, 0, NULL, NULL);
-		
+		glFinish();
 
 		// ======================================= Rendering Shtuff =================================================
 
