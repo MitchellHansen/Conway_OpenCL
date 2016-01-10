@@ -70,27 +70,27 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)bin\x86\$(Configuration)\</OutDir>
     <IntDir>temp\x86\$(Configuration)\</IntDir>
-    <IncludePath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx32\include;$(IncludePath)</IncludePath>
-    <LibraryPath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx32\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx32\include;Z:\Cpp_Libs\glew-1.13.0\include;Z:\Cpp_Libs\glfw-3.1.2.bin.WIN32\include;$(IncludePath)</IncludePath>
+    <LibraryPath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx32\lib;Z:\Cpp_Libs\glew-1.13.0\lib\Release\Win32;Z:\Cpp_Libs\glfw-3.1.2.bin.WIN32\lib-vc2015;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)bin\x86\$(Configuration)\</OutDir>
     <IntDir>temp\x86\$(Configuration)\</IntDir>
-    <IncludePath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx32\include;$(IncludePath)</IncludePath>
-    <LibraryPath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx32\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx32\include;Z:\Cpp_Libs\glew-1.13.0\include;Z:\Cpp_Libs\glfw-3.1.2.bin.WIN32\include;$(IncludePath)</IncludePath>
+    <LibraryPath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx32\lib;Z:\Cpp_Libs\glew-1.13.0\lib\Release\Win32;Z:\Cpp_Libs\glfw-3.1.2.bin.WIN32\lib-vc2015;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)bin\x86_64\$(Configuration)\</OutDir>
     <IntDir>temp\x86_64\$(Configuration)\</IntDir>
-    <IncludePath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx64\include;$(IncludePath)</IncludePath>
-    <LibraryPath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx64\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx64\include;Z:\Cpp_Libs\glew-1.13.0\include;Z:\Cpp_Libs\glfw-3.1.2.bin.WIN64\include;$(IncludePath)</IncludePath>
+    <LibraryPath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx64\lib;Z:\Cpp_Libs\glew-1.13.0\lib\Release\x64;Z:\Cpp_Libs\glfw-3.1.2.bin.WIN64\lib-vc2015;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)bin\x86_64\$(Configuration)\</OutDir>
     <IntDir>temp\x86_64\$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx64\include;$(IncludePath)</IncludePath>
-    <LibraryPath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx64\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx64\include;Z:\Cpp_Libs\glew-1.13.0\include;Z:\Cpp_Libs\glfw-3.1.2.bin.WIN64\include;$(IncludePath)</IncludePath>
+    <LibraryPath>Z:\Cpp_Libs\SFML-Visual_Studio2015RCx64\lib;Z:\Cpp_Libs\glew-1.13.0\lib\Release\x64;Z:\Cpp_Libs\glfw-3.1.2.bin.WIN64\lib-vc2015;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -110,15 +110,15 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\..\..\..\lib\win32\;$(AMDAPPSDKROOT)\lib\x86\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;OpenCL.lib;sfml-graphics-d.lib;sfml-audio-d.lib;sfml-network-d.lib;sfml-system-d.lib;sfml-window-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;OpenCL.lib;opengl32.lib;glew32.lib;glfw3.lib;sfml-graphics-d.lib;sfml-audio-d.lib;sfml-network-d.lib;sfml-system-d.lib;sfml-window-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <AdditionalOptions> /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
       <ImportLibrary>$(SolutionDir)bin/x86/Debug/HelloWorld.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>copy conway_kernel.cl "$(OutDir)conway_kernel.cl" /Y
-	  </Command>
+      <Command>copy conway_compute.cl "$(OutDir)conway_kernel.cl" /Y
+copy conway_align.cl "$(OutDir)conway_kernel.cl" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -137,15 +137,15 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\..\..\..\lib\win64\;$(AMDAPPSDKROOT)\lib\x86_64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;OpenCL.lib;sfml-graphics-d.lib;sfml-audio-d.lib;sfml-network-d.lib;sfml-system-d.lib;sfml-window-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;OpenCL.lib;opengl32.lib;glfw3.lib;glew32.lib;sfml-graphics-d.lib;sfml-audio-d.lib;sfml-network-d.lib;sfml-system-d.lib;sfml-window-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>$(SolutionDir)bin/x86_64/Debug/HelloWorld.lib</ImportLibrary>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <AdditionalOptions> /machine:x64 /debug %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>copy conway_kernel.cl "$(OutDir)conway_kernel.cl" /Y
-	  </Command>
+      <Command>copy conway_compute.cl "$(OutDir)conway_kernel.cl" /Y
+copy conway_align.cl "$(OutDir)conway_kernel.cl" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -171,7 +171,7 @@
       </EnableCOMDATFolding>
       <OptimizeReferences>
       </OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;OpenCL.lib;sfml-graphics.lib;sfml-audio.lib;sfml-network.lib;sfml-system.lib;sfml-window.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;OpenCL.lib;opengl32.lib;glew32.lib;glfw3.lib;sfml-graphics.lib;sfml-audio.lib;sfml-network.lib;sfml-system.lib;sfml-window.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\..\lib\win32\;$(AMDAPPSDKROOT)\lib\x86\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>$(SolutionDir)bin/x86/Release/HelloWorld.lib</ImportLibrary>
@@ -182,8 +182,8 @@
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
     <PostBuildEvent>
-      <Command>copy conway_kernel.cl "$(OutDir)conway_kernel.cl" /Y
-	  </Command>
+      <Command>copy conway_compute.cl "$(OutDir)conway_kernel.cl" /Y
+copy conway_align.cl "$(OutDir)conway_kernel.cl" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -211,7 +211,7 @@
       <OptimizeReferences>
       </OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\..\..\lib\win64\;$(AMDAPPSDKROOT)\lib\x86_64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;OpenCL.lib;sfml-graphics.lib;sfml-audio.lib;sfml-network.lib;sfml-system.lib;sfml-window.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;OpenCL.lib;opengl32.lib;glfw3.lib;glew32.lib;sfml-graphics.lib;sfml-audio.lib;sfml-network.lib;sfml-system.lib;sfml-window.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <LinkTimeCodeGeneration />
       <ImportLibrary>$(SolutionDir)bin/x86_64/Release/HelloWorld.lib</ImportLibrary>
@@ -219,16 +219,21 @@
       <AdditionalOptions> /machine:x64 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>copy conway_kernel.cl "$(OutDir)conway_kernel.cl" /Y
-	  </Command>
+      <Command>copy conway_compute.cl "$(OutDir)conway_kernel.cl" /Y
+copy conway_align.cl "$(OutDir)conway_kernel.cl" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Conway.cpp" />
+    <ClCompile Include="Conway.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="conway_compute.cl" />
     <None Include="conway_align.cl" />
+    <None Include="fragment_shader.sh" />
+    <None Include="vertex_shader.sh" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Shader.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
