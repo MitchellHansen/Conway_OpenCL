@@ -334,21 +334,6 @@ int main(int argc, char* argv[])
 		// Work size, for each y line
 		size_t global_work_size[1] = { 10 };
 
-		status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontBuffer, 0, 0, 0);
-		glFinish();
-		status = clEnqueueNDRangeKernel(commandQueue, compute_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
-		glFinish();
-		//status = clEnqueueReadBuffer(commandQueue, frontBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 4 * sizeof(unsigned char), (void*)pixel_array, 0, NULL, NULL);
-
-		status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontBuffer, 0, NULL, NULL);
-		glFinish();
-
-		// ======================================= Rendering Shtuff =================================================
-
-		glfwPollEvents();
-
-		// Render
-
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glUniform1i(glGetUniformLocation(ourShader.Program, "ourTexture1"), 0);
@@ -358,6 +343,26 @@ int main(int argc, char* argv[])
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
+
+		glFinish();
+
+		status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontBuffer, 0, 0, 0);
+
+		status = clEnqueueNDRangeKernel(commandQueue, compute_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
+
+		//status = clEnqueueReadBuffer(commandQueue, frontBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 4 * sizeof(unsigned char), (void*)pixel_array, 0, NULL, NULL);
+
+		status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontBuffer, 0, NULL, NULL);
+
+		clFinish(commandQueue);
+
+		// ======================================= Rendering Shtuff =================================================
+
+		glfwPollEvents();
+
+		// Render
+
+
 
 		// Swap the screen buffers
 		glfwSwapBuffers(gl_window);
