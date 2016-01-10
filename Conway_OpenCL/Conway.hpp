@@ -258,12 +258,12 @@ int main(int argc, char* argv[])
 
 	unsigned char* pixel_array = new sf::Uint8[WINDOW_X * WINDOW_Y * 4];
 
-	for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT; i++) {
+	for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 4; i += 4) {
 
-		pixel_array[i * 4] = 49; // R?
-		pixel_array[i * 4 + 1] = 68; // G?
-		pixel_array[i * 4 + 2] = 72; // B?
-		pixel_array[i * 4 + 3] = 255; // A?
+		pixel_array[i] = 29; // R?
+		pixel_array[i + 1] = 70; // G?
+		pixel_array[i + 2] = 100; // B?
+		pixel_array[i + 3] = 200; // A?
 	}
 
 	GLuint texture;
@@ -287,15 +287,14 @@ int main(int argc, char* argv[])
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, GRID_WIDTH, GRID_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, pixel_array);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, GRID_WIDTH, GRID_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixel_array);
 
 	glGenerateMipmap(GL_TEXTURE_2D);
 
 
-//	delete pixel_array;
+	delete pixel_array;
 
 
-	//////////////////////
 
 	// ========================================= Setup the buffers ==================================================
 
