@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
 	int WINDOW_Y = 1000;
 	int GRID_WIDTH = WINDOW_X;
 	int GRID_HEIGHT = WINDOW_Y;
-	int WORKER_SIZE = 2000;
+	int WORKER_SIZE = 1000;
 
 	// ======================================= Setup OpenGL =======================================================
 
@@ -97,7 +97,8 @@ int main(int argc, char* argv[])
 
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
-	Shader ourShader("Z:\\VS_Projects\\Conway_OpenCL\\Conway_OpenCL\\vertex_shader.sh", "Z:\\VS_Projects\\Conway_OpenCL\\Conway_OpenCL\\fragment_shader.sh");
+	// Stolen from LearnOpenGL, aint got no time for that
+	Shader vert_frag_shaders("Z:\\VS_Projects\\Conway_OpenCL\\Conway_OpenCL\\vertex_shader.sh", "Z:\\VS_Projects\\Conway_OpenCL\\Conway_OpenCL\\fragment_shader.sh");
 
 	GLfloat vertices[] = {
 		// Positions          // Colors           // Texture Coords
@@ -233,7 +234,7 @@ int main(int argc, char* argv[])
 
 	// Now create the kernels
 	cl_kernel compute_kernel = clCreateKernel(compute_program, "conway_compute", NULL);
-	cl_kernel back_kernel = clCreateKernel(align_program, "conway_align", NULL);
+	cl_kernel align_kernel = clCreateKernel(align_program, "conway_align", NULL);
 
 
 
@@ -244,14 +245,14 @@ int main(int argc, char* argv[])
 	std::uniform_int_distribution<int> rgen(0, 4); // 25% chance
 
 	// Init the grids
-	unsigned char* front_grid = new unsigned char[GRID_WIDTH * GRID_HEIGHT];
+	unsigned char* node_grid = new unsigned char[GRID_WIDTH * GRID_HEIGHT];
 
 	for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT; i++) {
 		if (rgen(rng) == 1) {
-			front_grid[i] = 1;
+			node_grid[i] = 1;
 		}
 		else {
-			front_grid[i] = 0;
+			node_grid[i] = 0;
 		}
 	}
 
@@ -293,7 +294,7 @@ int main(int argc, char* argv[])
 	glGenerateMipmap(GL_TEXTURE_2D);
 
 
-	//delete pixel_array;
+	delete pixel_array;
 
 
 
@@ -301,58 +302,48 @@ int main(int argc, char* argv[])
 
 	int err = 0;
 	
-	cl_mem frontBuffer = clCreateFromGLTexture(context , CL_MEM_WRITE_ONLY, GL_TEXTURE_2D, 0, texture, &err);
+	cl_mem frontWriteBuffer = clCreateFromGLTexture(context , CL_MEM_WRITE_ONLY, GL_TEXTURE_2D, 0, texture, &err);
+	cl_mem frontReadBuffer = clCreateFromGLTexture(context, CL_MEM_READ_ONLY, GL_TEXTURE_2D, 0, texture, &err);
+	cl_mem backBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(int), (void*)node_grid, &err);
 
 	cl_mem workerCountBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &WORKER_SIZE, &err);
 	cl_mem gridWidthBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_WIDTH, &err);
 	cl_mem gridHeightBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_HEIGHT, &err);
 
-	// Kernel args
-	status = clSetKernelArg(compute_kernel, 0, sizeof(cl_mem), (void *)&frontBuffer);
-	status = clSetKernelArg(compute_kernel, 1, sizeof(cl_mem), (void *)&workerCountBuffer);
-	status = clSetKernelArg(compute_kernel, 2, sizeof(cl_mem), (void *)&gridWidthBuffer);
-	status = clSetKernelArg(compute_kernel, 3, sizeof(cl_mem), (void *)&gridHeightBuffer);
+	// Compute kernel args
+	status = clSetKernelArg(compute_kernel, 0, sizeof(cl_mem), (void *)&frontWriteBuffer);
+	status = clSetKernelArg(compute_kernel, 1, sizeof(cl_mem), (void *)&backBuffer);
+	status = clSetKernelArg(compute_kernel, 2, sizeof(cl_mem), (void *)&workerCountBuffer);
+	status = clSetKernelArg(compute_kernel, 3, sizeof(cl_mem), (void *)&gridWidthBuffer);
+	status = clSetKernelArg(compute_kernel, 4, sizeof(cl_mem), (void *)&gridHeightBuffer);
 
+	status = clSetKernelArg(align_kernel, 0, sizeof(cl_mem), (void *)&frontReadBuffer);
+	status = clSetKernelArg(align_kernel, 1, sizeof(cl_mem), (void *)&backBuffer);
+	status = clSetKernelArg(align_kernel, 2, sizeof(cl_mem), (void *)&workerCountBuffer);
+	status = clSetKernelArg(align_kernel, 3, sizeof(cl_mem), (void *)&gridWidthBuffer);
+	status = clSetKernelArg(align_kernel, 4, sizeof(cl_mem), (void *)&gridHeightBuffer);
 
 
 	// ===================================== Loop ==================================================================
 
 	while (!glfwWindowShouldClose(gl_window)) {
 
-		// Clear the colorbuffer
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		//glfwPollEvents();
-		//glClear(GL_COLOR_BUFFER_BIT);
-
 		// ======================================= OpenCL Shtuff ===================================================
 
-		// Update the data in GPU memory
-		//status = clEnqueueWriteBuffer(commandQueue, frontBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 2 * sizeof(char), (void*)grid, NULL, 0, NULL);
-
 		// Work size, for each y line
-		size_t global_work_size[1] = { 10 };
+		size_t global_work_size[1] = { WORKER_SIZE };
 
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glUniform1i(glGetUniformLocation(ourShader.Program, "ourTexture1"), 0);
-
-		// Draw the triangle
-		ourShader.Use();
-		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);
-
-		glFinish();
-
-		status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontBuffer, 0, 0, 0);
+		status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontReadBuffer, 0, 0, 0);
+		status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontWriteBuffer, 0, 0, 0);
 
 		status = clEnqueueNDRangeKernel(commandQueue, compute_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
+		status = clEnqueueNDRangeKernel(commandQueue, align_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
 
-		//status = clEnqueueReadBuffer(commandQueue, frontBuffer, CL_TRUE, 0, GRID_WIDTH * GRID_HEIGHT * 4 * sizeof(unsigned char), (void*)pixel_array, 0, NULL, NULL);
-
-		status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontBuffer, 0, NULL, NULL);
+		status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontReadBuffer, 0, NULL, NULL);
+		status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontWriteBuffer, 0, NULL, NULL);
 
 		clFinish(commandQueue);
 
@@ -360,11 +351,19 @@ int main(int argc, char* argv[])
 
 		glfwPollEvents();
 
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glUniform1i(glGetUniformLocation(vert_frag_shaders.Program, "pixel_texture"), 0);
+
+		// Draw the triangle
+		vert_frag_shaders.Use();
+		glBindVertexArray(VAO);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+
+		glFinish();
+
 		// Render
-
-
-
-		// Swap the screen buffers
 		glfwSwapBuffers(gl_window);
 
 
@@ -374,7 +373,7 @@ int main(int argc, char* argv[])
 	glfwTerminate();
 	
 	// Release the buffers
-	status = clReleaseMemObject(frontBuffer);
+	status = clReleaseMemObject(frontReadBuffer);
 	status = clReleaseMemObject(workerCountBuffer);
 	status = clReleaseMemObject(gridWidthBuffer);
 	status = clReleaseMemObject(gridHeightBuffer);

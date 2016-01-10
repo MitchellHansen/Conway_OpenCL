@@ -1,21 +1,59 @@
-__kernel void conway_compute(__write_only image2d_t front_grid, __global int* num_workers, __global int* grid_width, __global int *grid_height)
+__kernel void conway_compute(__write_only image2d_t front_image, __global char* back_image, __global int* num_workers, __global int* grid_width, __global int *grid_height)
 {
 
-//int width = *grid_width;
-//int height = grid_height;
+	float4 black = (float4)(.49, .68, .81, 1);
+	float4 white = (float4)(.49, .68, .71, .3);
 
-	for (int i = 0; i < 90000; i ++){
-	int2 pixelcoord = (int2) (i % *grid_width, i / *grid_height);
-	//if (pixelcoord.x < width && pixelcoord.y < height)
-	//{   
-		//float4 pixel = read_imagef(image1, sampler, (int2)(pixelcoord.x, pixelcoord.y));
-    int4 black = (int4)(0,0,0,0);
+	// Caclulate the start and end range that this worker will be calculating
+	int data_length = *grid_width * *grid_height;
+
+	int start_range = (data_length / *num_workers) * get_global_id(0);
+	int end_range = (data_length / *num_workers) * (get_global_id(0) + 1);
+	
+	// x, y + 1
+
+	int neighbors = 0;
+
+	for (int i = start_range; i < end_range; i++){
+
+		int2 pixelcoord = (int2) (i % *grid_width, i / *grid_height);
+
+		// add all 8 blocks to neghbors
+		neighbors = 0;
+		// Top
+		neighbors += back_image[i - *grid_width];
+
+		// Top right
+		neighbors += back_image[i - *grid_width + 1];
+
+		// Right
+		neighbors += back_image[i + 1];
+
+		// Bottom Right
+		neighbors += back_image[i + *grid_width + 1];
+
+		// Bottom
+		neighbors += back_image[i + *grid_width];
+
+		// Bottom Left
+		neighbors += back_image[i + *grid_width - 1];
+
+		// Left
+		neighbors += back_image[i - 1];
+
+		// Top left
+		neighbors += back_image[i - *grid_width - 1];
+
+		// push living status to the padded second char
 
 
-    //write_imagef(front_grid, pixelcoord, black);
+		write_imagef(front_image, pixelcoord, black);
 
-	write_imagei(front_grid, pixelcoord, black);
-
-}
-//}
+		if (neighbors == 3 || (neighbors == 2 && back_image[i])){
+			write_imagef(front_image, pixelcoord, white);
+		}
+	
+		//else
+			//write_imagei(front_image, pixelcoord, white);
+	}
 }
