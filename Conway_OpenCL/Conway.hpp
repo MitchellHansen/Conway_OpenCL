@@ -242,7 +242,7 @@ int main(int argc, char* argv[])
 
 	// Setup the rng
 	std::mt19937 rng(time(NULL));
-	std::uniform_int_distribution<int> rgen(0, 4); // 25% chance
+	std::uniform_int_distribution<int> rgen(0, 2); // 25% chance
 
 	// Init the grids
 	unsigned char* node_grid = new unsigned char[GRID_WIDTH * GRID_HEIGHT];
@@ -262,10 +262,20 @@ int main(int argc, char* argv[])
 
 	for (int i = 0; i < GRID_WIDTH * GRID_HEIGHT * 4; i += 4) {
 
-		pixel_array[i] = i % 255; // R?
-		pixel_array[i + 1] = 70; // G?
-		pixel_array[i + 2] = 100; // B?
-		pixel_array[i + 3] = 100; // A?
+		if (node_grid[i / 4] == 1) {
+			pixel_array[i] = 0; // R?
+			pixel_array[i + 1] = 0; // G?
+			pixel_array[i + 2] = 0; // B?
+			pixel_array[i + 3] = 0; // A?	
+		}
+		else {
+			pixel_array[i] = 0; // R?
+			pixel_array[i + 1] = 0; // G?
+			pixel_array[i + 2] = 0; // B?
+			pixel_array[i + 3] = 0; // A?	
+			
+		}
+		
 	}
 
 	GLuint texture;
@@ -302,9 +312,9 @@ int main(int argc, char* argv[])
 
 	int err = 0;
 	
-	cl_mem frontWriteBuffer = clCreateFromGLTexture(context , CL_MEM_WRITE_ONLY, GL_TEXTURE_2D, 0, texture, &err);
-	cl_mem frontReadBuffer = clCreateFromGLTexture(context, CL_MEM_READ_ONLY, GL_TEXTURE_2D, 0, texture, &err);
-	cl_mem backBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(int), (void*)node_grid, &err);
+	cl_mem frontWriteBuffer = clCreateFromGLTexture(context , CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, texture, &err);
+	//cl_mem frontReadBuffer = clCreateFromGLTexture(context, CL_MEM_READ_ONLY, GL_TEXTURE_2D, 0, texture, &err);
+	cl_mem backBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, GRID_WIDTH * GRID_HEIGHT * sizeof(char), (void*)node_grid, &err);
 
 	cl_mem workerCountBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &WORKER_SIZE, &err);
 	cl_mem gridWidthBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &GRID_WIDTH, &err);
@@ -317,7 +327,7 @@ int main(int argc, char* argv[])
 	status = clSetKernelArg(compute_kernel, 3, sizeof(cl_mem), (void *)&gridWidthBuffer);
 	status = clSetKernelArg(compute_kernel, 4, sizeof(cl_mem), (void *)&gridHeightBuffer);
 
-	status = clSetKernelArg(align_kernel, 0, sizeof(cl_mem), (void *)&frontReadBuffer);
+	status = clSetKernelArg(align_kernel, 0, sizeof(cl_mem), (void *)&frontWriteBuffer);
 	status = clSetKernelArg(align_kernel, 1, sizeof(cl_mem), (void *)&backBuffer);
 	status = clSetKernelArg(align_kernel, 2, sizeof(cl_mem), (void *)&workerCountBuffer);
 	status = clSetKernelArg(align_kernel, 3, sizeof(cl_mem), (void *)&gridWidthBuffer);
@@ -336,14 +346,15 @@ int main(int argc, char* argv[])
 		// Work size, for each y line
 		size_t global_work_size[1] = { WORKER_SIZE };
 
-		status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontReadBuffer, 0, 0, 0);
-		status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontWriteBuffer, 0, 0, 0);
+		//status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontReadBuffer, 0, 0, 0);
+		//status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontWriteBuffer, 0, 0, 0);
 
 		status = clEnqueueNDRangeKernel(commandQueue, compute_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
+		clFinish(commandQueue);
 		status = clEnqueueNDRangeKernel(commandQueue, align_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
 
-		status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontReadBuffer, 0, NULL, NULL);
-		status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontWriteBuffer, 0, NULL, NULL);
+		//status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontReadBuffer, 0, NULL, NULL);
+		//status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontWriteBuffer, 0, NULL, NULL);
 
 		clFinish(commandQueue);
 
@@ -366,14 +377,12 @@ int main(int argc, char* argv[])
 		// Render
 		glfwSwapBuffers(gl_window);
 
-
-
 	}
 
 	glfwTerminate();
 	
 	// Release the buffers
-	status = clReleaseMemObject(frontReadBuffer);
+//	status = clReleaseMemObject(frontReadBuffer);
 	status = clReleaseMemObject(workerCountBuffer);
 	status = clReleaseMemObject(gridWidthBuffer);
 	status = clReleaseMemObject(gridHeightBuffer);
