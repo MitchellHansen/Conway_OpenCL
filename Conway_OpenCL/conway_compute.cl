@@ -1,8 +1,8 @@
-__kernel void conway_compute(__write_only image2d_t front_image, __global char* back_image, __global int* num_workers, __global int* grid_width, __global int *grid_height)
+__kernel void conway_compute(__write_only image2d_t front_image, __global unsigned char* back_image, __global int* num_workers, __global int* grid_width, __global int *grid_height)
 {
 
-	float4 black = (float4)(0.49, 0.68, 0.81, 1.0);
-	float4 white = (float4)(1.0, 1.00, 1.0, 0.5);
+	float4 black = (float4)(1.0, 0.0, 0.0, 1.0);
+	float4 white = (float4)(0.0, 0.0, 1.0, 0.0);
 
 	// Caclulate the start and end range that this worker will be calculating
 	int data_length = *grid_width * *grid_height;
@@ -15,6 +15,8 @@ __kernel void conway_compute(__write_only image2d_t front_image, __global char* 
 	int neighbors = 0;
 
 	for (int i = start_range; i < end_range; i++){
+
+		unsigned char im = back_image[i];
 
 		int2 pixelcoord = (int2) (i % *grid_width, i / *grid_height);
 
@@ -49,12 +51,12 @@ __kernel void conway_compute(__write_only image2d_t front_image, __global char* 
 
 		//write_imagef(front_image, pixelcoord, black);
 		
-		if (neighbors == 3 || (neighbors == 2 && back_image[i] == 1) || back_image[i] < 0){
-			write_imagef(front_image, pixelcoord, white);
+		if (neighbors == 3 || (neighbors == 2 && back_image[i] == 1) || (i % 10) == 1){
+			write_imagef(front_image, pixelcoord, black);
 		}
 	
 		else{
-			write_imagef(front_image, pixelcoord, black);
+			write_imagef(front_image, pixelcoord, white);
 		}
 	}
 }

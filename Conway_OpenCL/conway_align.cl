@@ -1,4 +1,4 @@
-__kernel void conway_align(__read_only image2d_t front_image, __global char* back_image, __global int* num_workers, __global int* grid_width, __global int *grid_height)
+__kernel void conway_align(__read_only image2d_t front_image, __global unsigned char* back_image, __global int* num_workers, __global int* grid_width, __global int *grid_height)
 {
 	const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_NONE  | CLK_FILTER_NEAREST;
 
@@ -15,9 +15,13 @@ __kernel void conway_align(__read_only image2d_t front_image, __global char* bac
 			int4 pixel;
 			pixel = read_imagei(front_image, sampler, pixelcoord);
 
-			char q = pixel.w / 255;
+			if (pixel.w > 200){
+				back_image[i] = 0;
+			}
+			else
+				back_image[i] = 0;
 
-			back_image[i] = pixel.w / 255;
+			
 	}
 
 }

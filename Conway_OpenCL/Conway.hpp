@@ -335,28 +335,31 @@ int main(int argc, char* argv[])
 
 
 	// ===================================== Loop ==================================================================
-
+	int i = 0;
 	while (!glfwWindowShouldClose(gl_window)) {
 
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		//glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		//glClear(GL_COLOR_BUFFER_BIT);
 
 		// ======================================= OpenCL Shtuff ===================================================
 
 		// Work size, for each y line
 		size_t global_work_size[1] = { WORKER_SIZE };
 
-		//status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontReadBuffer, 0, 0, 0);
-		//status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontWriteBuffer, 0, 0, 0);
-
+		glFinish();
+		status = clEnqueueAcquireGLObjects(commandQueue, 1, &frontWriteBuffer, 0, 0, 0);
+		
 		status = clEnqueueNDRangeKernel(commandQueue, compute_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
-		clFinish(commandQueue);
-		status = clEnqueueNDRangeKernel(commandQueue, align_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
 
-		//status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontReadBuffer, 0, NULL, NULL);
-		//status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontWriteBuffer, 0, NULL, NULL);
+		//clEnqueueBarrier(commandQueue);
 
-		clFinish(commandQueue);
+		//status = clEnqueueNDRangeKernel(commandQueue, align_kernel, 1, NULL, global_work_size, NULL, 0, NULL, NULL);
+
+		status = clEnqueueReleaseGLObjects(commandQueue, 1, &frontWriteBuffer, 0, NULL, NULL);
+
+		//clEnqueueBarrier(commandQueue);
+
+
 
 		// ======================================= Rendering Shtuff =================================================
 
@@ -372,7 +375,7 @@ int main(int argc, char* argv[])
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
-		glFinish();
+		
 
 		// Render
 		glfwSwapBuffers(gl_window);
