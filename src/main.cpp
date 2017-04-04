@@ -27,7 +27,10 @@ const int WINDOW_Y = 1080;
 void generate_nodes(sf::Uint8* nodes) {
 
 	for (int i = 0; i < WINDOW_X * WINDOW_Y; i += 1) {
-		if (rand() % 10 > 8)
+
+		sf::Vector2i pos(i % WINDOW_X, i / WINDOW_X);
+
+		if ((pos.x % 5 == 0) || (pos.y % 8 == 0))
 			nodes[i] = 1;
 		else
 			nodes[i] = 0;
@@ -38,7 +41,7 @@ void generate_nodes(sf::Uint8* nodes) {
 int main() {
 
 	sf::RenderWindow window(sf::VideoMode(WINDOW_X, WINDOW_Y), "conways-game-of-life-opencl");
-	window.setFramerateLimit(60);
+	window.setFramerateLimit(300);
 
 	float physic_step = 0.166f;
 	float physic_time = 0.0f;
@@ -54,7 +57,7 @@ int main() {
 	}
 
 	sf::Vector2i image_resolution(WINDOW_X, WINDOW_Y);
-	cl.create_image_buffer("viewport_image", image_resolution, sf::Vector2f(0, 0), CL_MEM_WRITE_ONLY);
+	cl.create_image_buffer("viewport_image", image_resolution, sf::Vector2f(0, 0), CL_MEM_READ_WRITE);
 	cl.create_buffer("image_res", sizeof(sf::Vector2i), &image_resolution);
 
 	sf::Uint8* nodes = new sf::Uint8[WINDOW_X * WINDOW_Y];
@@ -116,7 +119,6 @@ int main() {
 		window.clear(sf::Color::White);
 	
 		cl.run_kernel("conways", image_resolution);
-		//cl.run_kernel("conways", sf::Vector2i(5, 5));
 		cl.draw(&window);
 		
 		if (buffer_flip == 1)

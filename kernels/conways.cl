@@ -12,7 +12,7 @@ int pixel_to_index(int2 dimensions, int2 pixel) {
 
 __kernel void conways (
 		global int2* image_res,
-		__write_only image2d_t image,
+		__read_write image2d_t image,
 		global char* first_node_buffer,
         global char* second_node_buffer,
         global char* buffer_flip
@@ -29,8 +29,9 @@ __kernel void conways (
 	//if (pixel.x > 1800)
 	//	printf("%i, %i", pixel.x, pixel.y);
 
-	float4 dead = (float4)(.49, .68, .81, 1);
-	float4 alive = (float4)(.49, .68, .71, .3);
+	float4 dead = (float4)(.51, .49, .39, .9);
+	float4 alive = (float4)(.21, .43, .46, .6);
+	float4 flavor = (float4)(.21, .76, .83, .8);
 
 	// add all 8 blocks to neghbors
 	int neighbors = 0;
@@ -80,11 +81,12 @@ __kernel void conways (
 
 		int base = pixel_to_index(*image_res, pixel);
 		if (neighbors == 3 || (neighbors == 2 && first_node_buffer[base])){
-		   write_imagef(image, pixel, alive);
-		   second_node_buffer[base] = 1;
+			write_imagef(image, pixel, alive);
+			second_node_buffer[base] = 1;
 		} else {
-		   write_imagef(image, pixel, dead);
-		   second_node_buffer[base] = 0;
+
+			write_imagef(image, pixel, mix(read_imagef(image, pixel), dead, 0.01f));
+			second_node_buffer[base] = 0;
 		}
 
 	} else {
@@ -131,11 +133,11 @@ __kernel void conways (
 
 		int base = pixel_to_index(*image_res, pixel);
 		if (neighbors == 3 || (neighbors == 2 && second_node_buffer[base])){
-		   write_imagef(image, pixel, alive);
-		   first_node_buffer[base] = 1;
+		   	write_imagef(image, pixel, alive);
+		   	first_node_buffer[base] = 1;
 		} else {
-		   write_imagef(image, pixel, dead);
-		   first_node_buffer[base] = 0;
+		  	write_imagef(image, pixel, mix(read_imagef(image, pixel), flavor, 0.001f));
+		   	first_node_buffer[base] = 0;
 		}
 	}
 }
