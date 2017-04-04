@@ -21,7 +21,7 @@ float elap_time() {
 	return static_cast<float>(elapsed_time.count());
 }
 
-const int WINDOW_X = 1080;
+const int WINDOW_X = 1920;
 const int WINDOW_Y = 1080;
 
 void generate_nodes(sf::Uint8* nodes) {
@@ -45,7 +45,6 @@ int main() {
 	double frame_time = 0.0, elapsed_time = 0.0, delta_time = 0.0, accumulator_time = 0.0, current_time = 0.0;
 	
 	OpenCL cl;
-
 
 	if (!cl.init())
 		return -1;

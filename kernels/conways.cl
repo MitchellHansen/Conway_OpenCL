@@ -1,7 +1,7 @@
 int pixel_to_index(int2 dimensions, int2 pixel) {
 
 	if (pixel.x >= 0 && pixel.x <= dimensions.x &&
-		pixel.y >= 0 && pixel.x <= dimensions.y ){
+		pixel.y >= 0 && pixel.y <= dimensions.y ){
 
 		return pixel.y * dimensions.x + pixel.x;
 	}
