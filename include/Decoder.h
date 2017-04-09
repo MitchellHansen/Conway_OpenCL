@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
-
+#include <fstream>
+#include <sstream>
 #include <experimental/filesystem>
 #include <vector>
 #include <SFML/Graphics.hpp>
@@ -12,7 +13,7 @@ struct pattern_info {
 	std::string comments;
 	sf::Vector2i dimensions;
 
-	char *pattern;
+	char *nodes;
 
 };
 
@@ -24,11 +25,11 @@ public:
 	~Decoder();
 
 	pattern_info decodePattern(std::string pattern);
-	std::vector<std::string> getPatternList();
+	std::vector<const char*> getPatternList();
 
 private:
 
-	std::vector<std::string> pattern_list;
+	std::vector<const char*> pattern_list;
 
 	
 };

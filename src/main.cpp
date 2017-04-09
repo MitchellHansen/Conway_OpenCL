@@ -53,140 +53,33 @@ void generate_nodes(sf::Uint8* nodes) {
 
 }
 
-struct rle_info {
+void copy_pattern (sf::Uint8* nodes, sf::Vector2i dimensions, sf::Vector2u position, pattern_info pattern) {
 	
-	std::string title;
-	std::string author;
-	std::string comments;
-	sf::Vector2i dimensions;
+	for (int x = 0; x < pattern.dimensions.x; x++) {
+		for (int y = 0; y < pattern.dimensions.y; y++) {
 
-};
+			if (position.x + pattern.dimensions.x < dimensions.x ||
+				position.y + pattern.dimensions.y < dimensions.y  ) {
+				
+				nodes[(y+position.y) * dimensions.x + (x+position.x)] = pattern.nodes[y * pattern.dimensions.x + x];
+			}
+		}
+	}
+}
 
-rle_info load_rle(sf::Uint8* nodes, sf::Vector2i dimensions, std::string filename) {
-
-	rle_info info;
-
+void clear_nodes(sf::Uint8 *nodes, sf::Vector2i dimensions) {
 	for (int i = 0; i < dimensions.x * dimensions.y; i++) {
 		nodes[i] = 0;
 	}
-
-	
-	std::ifstream file(filename);
-
-	if (!file.is_open()) {
-		std::cout << "unable to open file" << std::endl;
-		return info;
-	}
-	
-	for (std::string line; std::getline(file, line); )
-	{
-		// Grab the header comments
-		if (line[0] == '#') {
-			
-			std::string data = line.substr(3, line.size() - 3);
-			
-			switch (line[1]) {
-				
-				case 'C': {
-					info.comments += data;
-					break;
-				}
-				case 'O': {
-					info.author += data;
-					break;
-				}
-				case 'N': {
-					info.title += data;
-					break;
-				}
-				default : {
-					std::cout << "Case : " << line[1] << " not supported" << std::endl;
-				}
-			}
-		}
-
-		// grab the dimensions
-		else if (line[0] == 'x') {
-
-			// Naively assume that it is in the exact form "x = <num>, y = <num>,"
-			std::stringstream ss(line);
-
-			std::string temp;
-			ss >> temp >> temp >> temp;
-			info.dimensions.x = std::stoi(temp.substr(0, temp.size() - 1));
-			
-			ss >> temp >> temp >> temp;
-			info.dimensions.y = std::stoi(temp.substr(0, temp.size() - 1));
-		}
-
-		// Decode the RLE
-		else {
-			
-			std::vector<std::vector<char>> grid;
-
-			std::stringstream ss(line);
-			std::string token;
-			
-			while (std::getline(ss, token, '$')) {
-				
-				std::vector<char> char_line;
-				unsigned int token_pos = 0;
-				std::string tmp;
-
-				while (token_pos < token.size()) {
-					
-					char status = -1;
-					if (token[token_pos] == 'b')
-						status = 0;
-					else if (token[token_pos] == 'o')
-						status = 1;
-					else if (token[token_pos] == '!')
-						break;
-					else
-						tmp += token[token_pos];
-					
-					token_pos++;
-
-					if (status >= 0) {
-						if (tmp.empty()) {
-							char_line.push_back(status);
-						}
-						else {
-							int count = std::stoi(tmp);
-							for (int i = 0; i < count; i++) {
-								char_line.push_back(status);
-							}
-							tmp.clear();
-						}
-					}
-					
-				}
-
-				grid.push_back(char_line);
-			}
-
-			int y_mod = 200;
-			int x_mod = 200;
-			for (int y = 0; y < grid.size(); y++) {
-				for (int x = 0; x < grid.at(y).size(); x++) {
-					nodes[(y+y_mod) * dimensions.x + (x+x_mod)] = grid.at(y).at(x);
-				}
-			}
-
-		}
-	}
-
-	std::cout << info.author << std::endl;
-	std::cout << info.title << std::endl;
-	std::cout << info.comments << std::endl;
-
-	return info;
 }
 
 int main() {
 
 	srand(time(NULL));
+
 	Decoder d;
+
+	std::vector<const char*> pattern_list = d.getPatternList();
 
 	sf::RenderWindow window(sf::VideoMode(WINDOW_X, WINDOW_Y), "conways-game-of-life-opencl");
 
@@ -231,7 +124,6 @@ int main() {
 
 	sf::Clock sf_delta_clock;
 	fps_counter render_fps;
-	fps_counter physic_fps;
 
 	int c = 0;
 
@@ -273,19 +165,14 @@ int main() {
 
 		while (accumulator_time >= physic_step) { // While the frame has sim time, update 
 			accumulator_time -= physic_step;
-			physic_time += physic_step;
-			//physic_fps.frame(accumulator_time);
-
-			
+			physic_time += physic_step;			
 		}
 
-		cl.run_kernel("conways", image_resolution);
 		ImGui::SFML::Update(window, sf_delta_clock.restart());
 		render_fps.frame(delta_time);
 
-		window.clear(sf::Color::White);
 
-		cl.draw(&window);
+		window.clear(sf::Color::White);
 
 
 		ImGui::Begin("Sim");
@@ -293,6 +180,37 @@ int main() {
 		if (ImGui::SliderInt("Simulation Speed", &simulation_speed, 30, 500)) {
 			window.setFramerateLimit(simulation_speed);
 		}
+		if (ImGui::Button("One shot")) {
+			
+			std::cout << "sim" << std::endl;
+
+			/*std::cout << buffer_flip << std::endl;
+			cl.map_buffer("buffer_flip", sizeof(char), &buffer_flip);*/
+		}
+		cl.run_kernel("conways", image_resolution);
+		cl.draw(&window);
+		if (buffer_flip == 1)
+			buffer_flip = 0;
+		else
+			buffer_flip = 1;
+
+		ImGui::Columns(2);
+
+		if (ImGui::Button("Load Pattern")) {
+			clear_nodes(nodes, sf::Vector2i(WINDOW_X, WINDOW_Y));
+			pattern_info p = d.decodePattern(pattern_list.at(c));
+			copy_pattern(nodes, sf::Vector2i(WINDOW_X, WINDOW_Y), sf::Vector2u(100, 300), p);
+			cl.create_buffer("first_node_buffer", WINDOW_X * WINDOW_Y, (void*)nodes, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
+			cl.create_buffer("second_node_buffer", WINDOW_X * WINDOW_Y, (void*)nodes, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
+			cl.set_kernel_arg("conways", 2, "first_node_buffer");
+			cl.set_kernel_arg("conways", 3, "second_node_buffer");
+		}
+
+		if (ImGui::ListBox("", &c, pattern_list.data(), pattern_list.size(), 30)) {
+
+		}
+
+		ImGui::NextColumn();
 
 		if (ImGui::Button("Rerun")) {
 			generate_nodes(nodes);
@@ -302,28 +220,18 @@ int main() {
 			cl.set_kernel_arg("conways", 3, "second_node_buffer");
 		}
 
-		const char* l[] = { "Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange", "Pineapple", "Strawberry", "Watermelon" };
-		
-		if(ImGui::ListBox("asdf", &c, l, 9)) {
-
-		}
-
-
 		ImGui::End();
 
 		render_fps.draw();
-		physic_fps.draw();
 
 		ImGui::Render();
 
 
 		
+
 		
-		if (buffer_flip == 1)
-			buffer_flip = 0;
-		else
-			buffer_flip = 1;
-		
+
+
 		// ImGui screws stuff up after the render, rendering a drawable resets it
 		window.draw(sf::CircleShape(0));
 		window.display();

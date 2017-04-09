@@ -21,11 +21,10 @@ __kernel void conways (
 	size_t x_pixel = get_global_id(0);
 	size_t y_pixel = get_global_id(1);
 
-
-	//printf(": %i", y_pixel);
-
 	int2 pixel = (int2)(x_pixel, y_pixel);
 
+	// if (pixel.x == 0 && pixel.y == 0)
+	// 	printf("Run");
 	//if (pixel.x > 1800)
 	//	printf("%i, %i", pixel.x, pixel.y);
 
@@ -39,6 +38,8 @@ __kernel void conways (
 
 	if (*buffer_flip == 0){
 
+		// if (pixel.x == 0 && pixel.y == 0)
+		// 	printf("Buffer 0");
 		// Top
 		val = pixel_to_index(*image_res, (int2)(pixel.x, pixel.y+1));
 		if (val >= 0)
@@ -89,7 +90,7 @@ __kernel void conways (
 			second_node_buffer[base] = 0;
 		}
 
-	} else {
+	} else if (*buffer_flip == 1) {
 
 		// Top
 		val = pixel_to_index(*image_res, (int2)(pixel.x, pixel.y+1));
@@ -133,6 +134,16 @@ __kernel void conways (
 
 		int base = pixel_to_index(*image_res, pixel);
 		if (neighbors == 3 || (neighbors == 2 && second_node_buffer[base])){
+		   	write_imagef(image, pixel, alive);
+		   	first_node_buffer[base] = 1;
+		} else {
+			write_imagef(image, pixel, dead);
+		  	//write_imagef(image, pixel, mix(read_imagef(image, pixel), flavor, 0.01f));
+		   	first_node_buffer[base] = 0;
+		}
+	} else{
+			int base = pixel_to_index(*image_res, pixel);
+		if (first_node_buffer[base]){
 		   	write_imagef(image, pixel, alive);
 		   	first_node_buffer[base] = 1;
 		} else {

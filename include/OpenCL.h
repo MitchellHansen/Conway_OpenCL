@@ -56,6 +56,8 @@ public:
 	// Have CL create and manage the texture for the image buffer. Access Type is the read/write specifier required by OpenCL
 	bool create_image_buffer(std::string buffer_name, sf::Vector2i size, sf::Vector2f position, cl_int access_type);
 
+	bool map_buffer(std::string buffer_name, unsigned int size, void* data = nullptr);
+
 	// Create a buffer with CL_MEM_READ_ONLY and CL_MEM_COPY_HOST_PTR
 	int create_buffer(std::string buffer_name, cl_uint size, void* data);
 

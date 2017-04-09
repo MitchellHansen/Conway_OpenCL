@@ -279,6 +279,22 @@ bool OpenCL::create_image_buffer(std::string buffer_name, sf::Vector2i size, sf:
 	return true;
 }
 
+bool OpenCL::map_buffer(std::string buffer_name, unsigned int size, void* data) {
+	
+	data = clEnqueueMapBuffer(command_queue,
+		buffer_map.at(buffer_name),
+		true,
+		CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+		0,
+		size,0,nullptr,nullptr,&error
+	);
+
+	if (vr_assert(error, "clEnqueueMapBuffer"))
+		return -1;
+
+	return true;
+}
+
 int OpenCL::create_buffer(std::string buffer_name, cl_uint size, void* data) {
 
 	if (buffer_map.count(buffer_name) > 0) {
