@@ -303,9 +303,7 @@ int OpenCL::create_buffer(std::string buffer_name, cl_uint size, void* data, cl_
 	if (buffer_map.count(buffer_name) > 0) {
 		release_buffer(buffer_name);
 	}
-
-	((char*)data)[10000];
-
+	
 	cl_mem buff = clCreateBuffer(
 		context, flags,
 		size, data, &error
@@ -381,29 +379,37 @@ int OpenCL::set_kernel_arg(std::string kernel_name, int index, std::string buffe
 
 bool OpenCL::load_config() {
 
+	std::cout << "Loading hardware config...";
+
 	std::ifstream input_file("device_config.bin", std::ios::binary | std::ios::in);
 
 	if (!input_file.is_open()) {
-		std::cout << "No config file..." << std::endl;
+		std::cout << "No config file found" << std::endl;
 		return false;
 	}
 
 	device::packed_data data;
 	input_file.read(reinterpret_cast<char*>(&data), sizeof(data));
+	input_file.close();
 
-	std::cout << "config loaded, looking for device..." << std::endl;
+	bool found = false;
 
 	for (auto d: device_list) {
 		
 		if (memcmp(&d, &data, sizeof(device::packed_data)) == 0) {
-			std::cout << "Found saved device" << std::endl;
+			std::cout << "Found saved config" << std::endl;
+			found = true;
 			device_id = d.getDeviceId();
 			platform_id = d.getPlatformId();
 			break;
 		}
 	}
 
-	input_file.close();
+	if (!found) {
+		std::cout << "No hardware matching config found" << std::endl;
+		return false;
+	}
+
 	return true;
 }
 

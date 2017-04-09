@@ -11,10 +11,49 @@
 #include <iterator>
 #include <list>
 #include <algorithm>
+#include "imgui/imgui.h"
 
 
 const double PI = 3.141592653589793238463;
 const float  PI_F = 3.14159265358979f;
+
+struct fps_counter {
+public:
+	fps_counter() {};
+
+	void frame(double delta_time) {
+
+		// Apply 100 units of smoothing
+		if (frame_count == 100) {
+			frame_count = 0;
+			fps_average = 0;
+		}
+		frame_count++;
+		fps_average += (delta_time - fps_average) / frame_count;
+	}
+
+	void draw() {
+
+		if (arr_pos == 200)
+			arr_pos = 0;
+
+		fps_array[arr_pos] = static_cast<float>(1.0 / fps_average);
+		arr_pos++;
+
+		ImGui::Begin("Performance");
+		ImGui::PlotLines("FPS", fps_array, 200, 0, std::to_string(1.0 / fps_average).c_str(), 0.0f, 150.0f, ImVec2(200, 80));
+		ImGui::End();
+	}
+
+private:
+
+	float fps_array[200]{ 60 };
+	int arr_pos = 0;
+
+	int frame_count = 0;
+	double fps_average = 0;
+
+};
 
 inline sf::Vector3f SphereToCart(sf::Vector2f i) {
 

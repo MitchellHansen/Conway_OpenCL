@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <SFML/Graphics.hpp>
 #include <random>
@@ -8,6 +7,8 @@
 #include "OpenCL.h"
 #include "imgui/imgui-SFML.h"
 #include "imgui/imgui.h"
+#include <experimental/filesystem>
+#include "Decoder.h"
 
 float elap_time() {
 	static std::chrono::time_point<std::chrono::system_clock> start;
@@ -28,14 +29,26 @@ const int WINDOW_Y = 1080;
 
 void generate_nodes(sf::Uint8* nodes) {
 
+	int x_divisor = rand() % 49 + 1;
+	int y_divisor = rand() % 10 + 1;
+
 	for (int i = 0; i < WINDOW_X * WINDOW_Y; i += 1) {
 
 		sf::Vector2i pos(i % WINDOW_X, i / WINDOW_X);
 
-		if ((pos.x % 5 == 0) || (pos.y % 8 == 0))
+		if ((pos.x % x_divisor == 0) || (pos.y % y_divisor == 0))
 			nodes[i] = 1;
 		else
 			nodes[i] = 0;
+	}
+
+	for (int i = 0; i < WINDOW_X * WINDOW_Y; i += 1) {
+
+		sf::Vector2i pos(i % WINDOW_X, i / WINDOW_X);
+
+		if (rand() % 200 == 0)
+			nodes[i] = 1;
+
 	}
 
 }
@@ -57,6 +70,7 @@ rle_info load_rle(sf::Uint8* nodes, sf::Vector2i dimensions, std::string filenam
 		nodes[i] = 0;
 	}
 
+	
 	std::ifstream file(filename);
 
 	if (!file.is_open()) {
@@ -171,6 +185,9 @@ rle_info load_rle(sf::Uint8* nodes, sf::Vector2i dimensions, std::string filenam
 
 int main() {
 
+	srand(time(NULL));
+	Decoder d;
+
 	sf::RenderWindow window(sf::VideoMode(WINDOW_X, WINDOW_Y), "conways-game-of-life-opencl");
 
 	int simulation_speed = 100;
@@ -179,7 +196,7 @@ int main() {
 	ImGui::SFML::Init(window);
 	window.resetGLStates();
 
-	float physic_step = 0.166f;
+	float physic_step = 0.0166f;
 	float physic_time = 0.0f;
 	double frame_time = 0.0, elapsed_time = 0.0, delta_time = 0.0, accumulator_time = 0.0, current_time = 0.0;
 	
@@ -197,9 +214,9 @@ int main() {
 	cl.create_buffer("image_res", sizeof(sf::Vector2i), &image_resolution);
 
 	sf::Uint8* nodes = new sf::Uint8[WINDOW_X * WINDOW_Y];
-	//generate_nodes(nodes);
+	generate_nodes(nodes);
 
-	load_rle(nodes, sf::Vector2i(WINDOW_X, WINDOW_Y), "../assets/puffer_breeder_1.rle");
+	//load_rle(nodes, sf::Vector2i(WINDOW_X, WINDOW_Y), "../assets/snark.rle");
 	cl.create_buffer("first_node_buffer", WINDOW_X * WINDOW_Y, (void*)nodes, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
 	cl.create_buffer("second_node_buffer", WINDOW_X * WINDOW_Y, (void*)nodes, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
 
@@ -213,9 +230,10 @@ int main() {
 	cl.set_kernel_arg("conways", 4, "buffer_flip");
 
 	sf::Clock sf_delta_clock;
-	
+	fps_counter render_fps;
+	fps_counter physic_fps;
 
-
+	int c = 0;
 
 	while (window.isOpen())
 	{
@@ -249,20 +267,24 @@ int main() {
 		elapsed_time = elap_time(); // Handle time
 		delta_time = elapsed_time - current_time;
 		current_time = elapsed_time;
-		if (delta_time > 0.02f)
-			delta_time = 0.02f;
+		if (delta_time > 0.05f)
+			delta_time = 0.05f;
 		accumulator_time += delta_time;
 
 		while (accumulator_time >= physic_step) { // While the frame has sim time, update 
 			accumulator_time -= physic_step;
 			physic_time += physic_step;
+			//physic_fps.frame(accumulator_time);
+
+			
 		}
 
+		cl.run_kernel("conways", image_resolution);
 		ImGui::SFML::Update(window, sf_delta_clock.restart());
+		render_fps.frame(delta_time);
 
 		window.clear(sf::Color::White);
 
-		cl.run_kernel("conways", image_resolution);
 		cl.draw(&window);
 
 
@@ -272,7 +294,26 @@ int main() {
 			window.setFramerateLimit(simulation_speed);
 		}
 
+		if (ImGui::Button("Rerun")) {
+			generate_nodes(nodes);
+			cl.create_buffer("first_node_buffer", WINDOW_X * WINDOW_Y, (void*)nodes, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
+			cl.create_buffer("second_node_buffer", WINDOW_X * WINDOW_Y, (void*)nodes, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
+			cl.set_kernel_arg("conways", 2, "first_node_buffer");
+			cl.set_kernel_arg("conways", 3, "second_node_buffer");
+		}
+
+		const char* l[] = { "Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange", "Pineapple", "Strawberry", "Watermelon" };
+		
+		if(ImGui::ListBox("asdf", &c, l, 9)) {
+
+		}
+
+
 		ImGui::End();
+
+		render_fps.draw();
+		physic_fps.draw();
+
 		ImGui::Render();
 
 
