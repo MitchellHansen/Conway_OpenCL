@@ -30,7 +30,7 @@ __kernel void conways (
 	//	printf("%i, %i", pixel.x, pixel.y);
 
 	float4 dead = (float4)(.51, .49, .39, .9);
-	float4 alive = (float4)(.21, .43, .46, .6);
+	float4 alive = (float4)(.9, .9, .9, .9);
 	float4 flavor = (float4)(.21, .76, .83, .8);
 
 	// add all 8 blocks to neghbors
@@ -84,8 +84,8 @@ __kernel void conways (
 			write_imagef(image, pixel, alive);
 			second_node_buffer[base] = 1;
 		} else {
-
-			write_imagef(image, pixel, mix(read_imagef(image, pixel), dead, 0.01f));
+			write_imagef(image, pixel, dead);
+			//write_imagef(image, pixel, mix(read_imagef(image, pixel), dead, 0.01f));
 			second_node_buffer[base] = 0;
 		}
 
@@ -136,7 +136,8 @@ __kernel void conways (
 		   	write_imagef(image, pixel, alive);
 		   	first_node_buffer[base] = 1;
 		} else {
-		  	write_imagef(image, pixel, mix(read_imagef(image, pixel), flavor, 0.001f));
+			write_imagef(image, pixel, dead);
+		  	//write_imagef(image, pixel, mix(read_imagef(image, pixel), flavor, 0.01f));
 		   	first_node_buffer[base] = 0;
 		}
 	}
