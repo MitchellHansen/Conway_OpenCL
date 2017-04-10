@@ -73,14 +73,14 @@ void clear_nodes(sf::Uint8 *nodes, sf::Vector2i dimensions) {
 	}
 }
 
+// Set up the copy pattern to load at a position, mouse click?
+// 
+
 int main() {
 
 	srand(time(NULL));
 
-	Decoder d;
-
-	std::vector<const char*> pattern_list = d.getPatternList();
-
+	// Load and setup the windows state
 	sf::RenderWindow window(sf::VideoMode(WINDOW_X, WINDOW_Y), "conways-game-of-life-opencl");
 
 	int simulation_speed = 100;
@@ -88,28 +88,22 @@ int main() {
 
 	ImGui::SFML::Init(window);
 	window.resetGLStates();
-
-	float physic_step = 0.0166f;
-	float physic_time = 0.0f;
-	double frame_time = 0.0, elapsed_time = 0.0, delta_time = 0.0, accumulator_time = 0.0, current_time = 0.0;
 	
+
+	// start up OpenCL
 	OpenCL cl;
 
 	if (!cl.init())
 		return -1;
 	
-	while (!cl.compile_kernel("../kernels/conways.cl", "conways")) {
+	while (!cl.compile_kernel("../kernels/conways.cl", "conways")) 
 		std::cin.get();
-	}
 
 	sf::Vector2i image_resolution(WINDOW_X, WINDOW_Y);
-	cl.create_image_buffer("viewport_image", image_resolution, sf::Vector2f(0, 0), CL_MEM_READ_WRITE);
 	cl.create_buffer("image_res", sizeof(sf::Vector2i), &image_resolution);
-
+	cl.create_image_buffer("viewport_image", image_resolution, sf::Vector2f(0, 0), CL_MEM_READ_WRITE);
+	
 	sf::Uint8* nodes = new sf::Uint8[WINDOW_X * WINDOW_Y];
-	generate_nodes(nodes);
-
-	//load_rle(nodes, sf::Vector2i(WINDOW_X, WINDOW_Y), "../assets/snark.rle");
 	cl.create_buffer("first_node_buffer", WINDOW_X * WINDOW_Y, (void*)nodes, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
 	cl.create_buffer("second_node_buffer", WINDOW_X * WINDOW_Y, (void*)nodes, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
 
@@ -122,10 +116,23 @@ int main() {
 	cl.set_kernel_arg("conways", 3, "second_node_buffer");
 	cl.set_kernel_arg("conways", 4, "buffer_flip");
 
+	Decoder d;
+	std::vector<const char*> pattern_list = d.getPatternList();
+
 	sf::Clock sf_delta_clock;
 	fps_counter render_fps;
 
-	int c = 0;
+	int pattern_number = 0;
+
+	enum MouseState { PRESSED , DEPRESSED };
+	MouseState mouse_state = DEPRESSED;
+
+	sf::Vector2i mouse_position;
+	float zoom_level = 1.0f;
+
+	float physic_step = 0.0166f;
+	float physic_time = 0.0f;
+	double frame_time = 0.0, elapsed_time = 0.0, delta_time = 0.0, accumulator_time = 0.0, current_time = 0.0;
 
 	while (window.isOpen())
 	{
@@ -134,26 +141,36 @@ int main() {
 			if (event.type == sf::Event::Closed) {
 				window.close();
 			}
-			if (event.type == sf::Event::KeyPressed) {
-				if (event.key.code == sf::Keyboard::Down) {
+			if (event.type == sf::Event::MouseButtonPressed) {
 
+				if (event.mouseButton.button == sf::Mouse::Right) {
+					mouse_state = PRESSED;
+					mouse_position = sf::Mouse::getPosition();
 				}
-				if (event.key.code == sf::Keyboard::Up) {
-			
-				}
-				if (event.key.code == sf::Keyboard::Right) {
-					
-				}
-				if (event.key.code == sf::Keyboard::Left) {
-				
-				}
-				if (event.key.code == sf::Keyboard::Equal) {
-				
-				}
-				if (event.key.code == sf::Keyboard::Dash) {
-			
-				}
+
 			}
+			if (event.type == sf::Event::MouseButtonReleased) {
+				mouse_state = DEPRESSED;
+			}
+
+			if (event.type == sf::Event::MouseWheelScrolled) {
+				zoom_level -= event.mouseWheelScroll.delta / 10;
+				sf::View v = window.getView();
+				v.setSize(static_cast<sf::Vector2f>(window.getSize()) * zoom_level);
+				window.setView(v);
+			}
+		}
+
+		if (mouse_state == PRESSED) {
+			
+			sf::Vector2i mouse_delta = mouse_position - sf::Mouse::getPosition();
+			mouse_position -= mouse_delta;
+
+			sf::View v = window.getView();
+			auto center = v.getCenter() + (static_cast<sf::Vector2f>(mouse_delta) * zoom_level);
+			v.setCenter(center);
+			window.setView(v);
+
 		}
 
 		elapsed_time = elap_time(); // Handle time
@@ -172,8 +189,7 @@ int main() {
 		render_fps.frame(delta_time);
 
 
-		window.clear(sf::Color::White);
-
+		window.clear(sf::Color(0x696969FF));
 
 		ImGui::Begin("Sim");
 
@@ -194,23 +210,24 @@ int main() {
 		else
 			buffer_flip = 1;
 
-		ImGui::Columns(2);
 
-		if (ImGui::Button("Load Pattern")) {
+		if (ImGui::Button("Clear Grid")) {
 			clear_nodes(nodes, sf::Vector2i(WINDOW_X, WINDOW_Y));
-			pattern_info p = d.decodePattern(pattern_list.at(c));
-			copy_pattern(nodes, sf::Vector2i(WINDOW_X, WINDOW_Y), sf::Vector2u(100, 300), p);
 			cl.create_buffer("first_node_buffer", WINDOW_X * WINDOW_Y, (void*)nodes, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
 			cl.create_buffer("second_node_buffer", WINDOW_X * WINDOW_Y, (void*)nodes, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
 			cl.set_kernel_arg("conways", 2, "first_node_buffer");
 			cl.set_kernel_arg("conways", 3, "second_node_buffer");
 		}
 
-		if (ImGui::ListBox("", &c, pattern_list.data(), pattern_list.size(), 30)) {
-
+		if (ImGui::Button("Load Pattern")) {
+			clear_nodes(nodes, sf::Vector2i(WINDOW_X, WINDOW_Y));
+			pattern_info p = d.decodePattern(pattern_list.at(pattern_number));
+			copy_pattern(nodes, sf::Vector2i(WINDOW_X, WINDOW_Y), sf::Vector2u(100, 300), p);
+			cl.create_buffer("first_node_buffer", WINDOW_X * WINDOW_Y, (void*)nodes, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
+			cl.create_buffer("second_node_buffer", WINDOW_X * WINDOW_Y, (void*)nodes, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR);
+			cl.set_kernel_arg("conways", 2, "first_node_buffer");
+			cl.set_kernel_arg("conways", 3, "second_node_buffer");
 		}
-
-		ImGui::NextColumn();
 
 		if (ImGui::Button("Rerun")) {
 			generate_nodes(nodes);
@@ -219,6 +236,12 @@ int main() {
 			cl.set_kernel_arg("conways", 2, "first_node_buffer");
 			cl.set_kernel_arg("conways", 3, "second_node_buffer");
 		}
+
+		if (ImGui::ListBox("", &pattern_number, pattern_list.data(), pattern_list.size(), 30)) {
+
+		}
+
+
 
 		ImGui::End();
 
