@@ -1,7 +1,7 @@
 
 ## About
 
-Using the OpenCL cl_khr_gl_sharing extension, a complete in core conways game of life simulation is achievable on the GPU, allowing performance exceeding 1500 cycles per second on a 1920x1080 grid with modest hardware.
+With the cl_khr_gl_sharing extension to the OpenCL API, we can do a zero copy share of the automata data and the rendered textures. This speeds up the sim quite significantly, getting 1500 cycles per second on a 1920x1080 grid of single pixel cells
 
 ### Features
 
