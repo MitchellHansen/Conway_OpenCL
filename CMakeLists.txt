@@ -10,9 +10,15 @@ project(${PNAME})
 
 # Set up variables, and find SFML
 if (WIN32)
-    set(SFML_ROOT root CACHE STRING "User specified path")
-    set(SFML_INCLUDE_DIR ${SFML_ROOT}/include)
+	set(SFML_ROOT root CACHE STRING "User specified path")
+	set(SFML_INCLUDE_DIR ${SFML_ROOT}/include)
 endif()
+
+# You're probably going to need to change these paths
+if (UNIX)
+	set(OpenCL_INCLUDE_DIR /usr/include/CL)
+	set(OpenCL_LIBRARY /usr/lib/x86_64-linux-gnu/libOpenCL.so.1)
+endif (UNIX)
 
 set(SFML_COMPONENTS graphics window system network audio)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
@@ -48,12 +54,12 @@ foreach (source IN ITEMS ${SOURCES})
 		get_filename_component(filename ${source} DIRECTORY)
 
 		STRING(REGEX REPLACE "/" "\\\\" filename ${filename})
-		
+
 		string(REGEX MATCHALL "src(.*)" substrings ${filename})
 		list(GET substrings 0 substring)
-		
-		SOURCE_GROUP(${substring} FILES ${source}) 
-		
+
+		SOURCE_GROUP(${substring} FILES ${source})
+
 	endif()
 endforeach()
 
@@ -63,12 +69,12 @@ foreach (source IN ITEMS ${HEADERS})
 		get_filename_component(filename ${source} DIRECTORY)
 
 		STRING(REGEX REPLACE "/" "\\\\" filename ${filename})
-		
+
 		string(REGEX MATCHALL "include(.*)" substrings ${filename})
 		list(GET substrings 0 substring)
-		
-		SOURCE_GROUP(${substring} FILES ${source}) 
-		
+
+		SOURCE_GROUP(${substring} FILES ${source})
+
 	endif()
 endforeach()
 
@@ -78,16 +84,18 @@ foreach (source IN ITEMS ${KERNELS})
 		get_filename_component(filename ${source} DIRECTORY)
 
 		STRING(REGEX REPLACE "/" "\\\\" filename ${filename})
-		
+
 		string(REGEX MATCHALL "kernels(.*)" substrings ${filename})
 		list(GET substrings 0 substring)
-		
-		SOURCE_GROUP(${substring} FILES ${source}) 
-		
+
+		SOURCE_GROUP(${substring} FILES ${source})
+
 	endif()
 endforeach()
 
+
 # Link CL, GL, and SFML
+target_link_libraries (${PNAME} stdc++fs) 
 target_link_libraries (${PNAME} ${SFML_LIBRARIES} ${SFML_DEPENDENCIES})
 target_link_libraries (${PNAME} ${OpenCL_LIBRARY})
 target_link_libraries (${PNAME} ${OPENGL_LIBRARIES})
@@ -97,5 +105,4 @@ if (NOT WIN32)
 endif()
 
 # Setup to use C++14
-set_property(TARGET ${PNAME} PROPERTY CXX_STANDARD 14)
-
+set_property(TARGET ${PNAME} PROPERTY CXX_STANDARD 17)

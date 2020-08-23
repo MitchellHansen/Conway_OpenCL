@@ -5,7 +5,7 @@
 #include <experimental/filesystem>
 #include <vector>
 #include <SFML/Graphics.hpp>
-
+#include <cstring> 
 struct pattern_info {
 	
 	std::string title;

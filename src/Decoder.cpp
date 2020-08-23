@@ -8,8 +8,10 @@ Decoder::Decoder() {
 	for (std::experimental::filesystem::directory_entry p : std::experimental::filesystem::directory_iterator("../assets/patterns/")) {
 		// good lord c++
 		std::string s = p.path().generic_string();
-		const char* char_shit = new const char[s.size() + 1];
+		const char* char_shit = new char[s.size() + 1];
 		memcpy((void*)char_shit, s.c_str(), s.size()+1);
+
+        delete char_shit;
 
 		pattern_list.push_back(char_shit);
 	}
